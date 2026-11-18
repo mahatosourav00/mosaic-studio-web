@@ -1,0 +1,33 @@
+name: Build and deploy
+on:
+  push: { branches: [main] }
+  workflow_dispatch:
+permissions: { contents: read, pages: write, id-token: write }
+concurrency: { group: pages, cancel-in-progress: true }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with: { targets: wasm32-unknown-unknown }
+      - name: Unit tests
+        run: cargo test -p mosaic-core --lib
+      - name: Build wasm
+        run: |
+          cargo build --release --target wasm32-unknown-unknown -p mosaic-core
+          curl -sL https://github.com/wasm-bindgen/wasm-bindgen/releases/download/0.2.130/wasm-bindgen-0.2.130-x86_64-unknown-linux-musl.tar.gz | tar xz
+          ./wasm-bindgen-0.2.130-x86_64-unknown-linux-musl/wasm-bindgen --target web --out-dir pkg --out-name mosaic_core target/wasm32-unknown-unknown/release/mosaic_core.wasm
+      - name: Stamp service-worker version
+        run: sed -i "s/^const VERSION = .*/const VERSION = \"${GITHUB_SHA::8}\";/" sw.js
+      - name: Assemble site
+        run: mkdir site && cp -r index.html manifest.webmanifest sw.js css js icons vendor pkg site/ && rm -f site/pkg/.gitignore
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: site }
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: { name: github-pages, url: "${{ steps.d.outputs.page_url }}" }
+    steps:
+      - id: d
+        uses: actions/deploy-pages@v4

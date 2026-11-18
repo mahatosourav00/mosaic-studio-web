@@ -1,0 +1,20 @@
+[package]
+name = "mosaic-core"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "=0.2.130"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = ["HtmlCanvasElement", "OffscreenCanvas", "Window", "console"] }
+console_error_panic_hook = "0.1"
+
+# GPU code only exists for the browser; keeping it out of native builds lets `cargo test` run the solver anywhere.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wgpu = { version = "30", default-features = false, features = ["webgpu", "webgl", "wgsl"] }
+bytemuck = { version = "1", features = ["derive"] }
