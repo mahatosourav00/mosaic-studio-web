@@ -257,15 +257,16 @@ export function create() {
   go1.onclick = async () => {
     ctl = new AbortController();
     go1.disabled = true; cancel.hidden = false; prog.hidden = false; res.replaceChildren();
-    let wake = null; try { wake = await navigator.wakeLock?.request("screen"); } catch {}
+    stage.textContent = "Getting ready…"; prog.removeAttribute("value");     // moving "working" bar until real progress arrives
+    let wake = null, finished = false; navigator.wakeLock?.request("screen").then((l) => { if (finished) l.release(); else wake = l; }, () => {});   // do not wait for it
     try {
-      const r = await buildMosaic({ photos: app.photos, main: app.main, settings: st, signal: ctl.signal, onStage: (n, f) => { stage.textContent = n; prog.value = f; } });
+      const r = await buildMosaic({ photos: app.photos, main: app.main, settings: st, signal: ctl.signal, onStage: (n, f) => { stage.textContent = n; if (f > 0) prog.value = f; else prog.removeAttribute("value"); } });
       if (app.result) URL.revokeObjectURL(app.result.url);
       app.result = { ...r, url: URL.createObjectURL(r.blob) };
       app.aspect = (r.cols * (st.tile_aspect.split(":")[0] / st.tile_aspect.split(":")[1])) / r.rows;
       stage.textContent = "Done."; showResult();
     } catch (e) { stage.textContent = e.name === "AbortError" ? "Cancelled." : "Something went wrong: " + (e.message || e); }
-    finally { wake?.release?.(); go1.disabled = false; cancel.hidden = true; prog.hidden = true; }
+    finally { finished = true; wake?.release?.(); go1.disabled = false; cancel.hidden = true; prog.hidden = true; }
   };
   cancel.onclick = () => ctl?.abort();
   const content = h("div", { class: "page" },

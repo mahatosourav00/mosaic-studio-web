@@ -128,6 +128,7 @@ async function solveAndRender(core, j, onStage, signal) {
  * Returns {blob, width, height, dpi, capped, stats, scene (not for previews), ...}.
  */
 export async function buildMosaic({ photos, main, settings, onStage, signal, preview = false }) {
+  onStage?.("Getting ready", 0);
   const core = await loadCore();
   const s = preview ? { ...settings, output_mode: "screen", cell_px: 24 } : settings;
   onStage?.("Reading your photos", 0);
