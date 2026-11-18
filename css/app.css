@@ -86,7 +86,7 @@ body.has-bar main { padding-bottom: calc(110px + var(--sab)); }
 .opt-top { display: flex; align-items: center; gap: 8px; }
 .opt-top label { flex: 1; font-weight: 600; }
 .opt.inline .opt-top label { flex: 1; }
-.opt-top label.switch { flex: none; }
+.opt .opt-top label.switch, .opt.inline .opt-top label.switch { flex: none; }
 .val { color: var(--accent2); font-weight: 650; font-variant-numeric: tabular-nums; }
 .help { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line); background: var(--s2); color: var(--accent2); font-weight: 700; font-size: 14px; cursor: pointer; flex: none; }
 .opt .hint { margin-top: -4px; }
