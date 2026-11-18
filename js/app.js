@@ -1,6 +1,6 @@
 // Shared app state, navigation and the page shell (top bar, progress rail, bottom action bar).
-import { loadSaved, save } from "./settings.js";
-import { $, h } from "./ui.js";
+import { loadSaved, save, defaults } from "./settings.js";
+import { $, h, toast } from "./ui.js";
 
 export const app = {
   photos: [],          // File[] chosen as tiles
@@ -10,6 +10,17 @@ export const app = {
   dirs: [],            // sub-folder names found in a chosen folder: { name, count, off }
 };
 export const persist = () => save(app.settings);
+
+/** Put every option back to its default (with an Undo), then redraw the current page with `rerender`. */
+export function resetSettings(rerender) {
+  const before = { ...app.settings };
+  Object.assign(app.settings, defaults());
+  persist();
+  toast("All settings are back to the defaults.", { action: "Undo", fn: () => { Object.assign(app.settings, before); persist(); toast("Your settings are restored."); rerender?.(); } });
+  rerender?.();
+}
+/** A "Reset to defaults" button for the bottom of a settings page. */
+export const resetButton = (rerender) => h("button", { class: "btn ghost", type: "button", onclick: () => resetSettings(rerender) }, "Reset to defaults");
 
 export const go = (name) => { location.hash = name === "home" ? "" : name; };
 

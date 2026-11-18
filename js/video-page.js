@@ -1,5 +1,5 @@
 // Video page: live preview, style and every video option, save as MP4 (or WebM).
-import { app, go, mount, persist } from "./app.js";
+import { app, go, mount, persist, resetButton } from "./app.js";
 import { h, $, card, title, row, toggle, slider, seg, select, group, toast } from "./ui.js";
 import { STYLES, VIDEO_SHAPES } from "./settings.js";
 import { createPlayer, exportMp4, exportWebm } from "./video.js";
@@ -49,7 +49,8 @@ export async function videoPage() {
       toggle(st, "backdrop", { label: "Blurred backdrop", help: "backdrop", onChange: change }),
     ], { sub: "9 options" }),
     card(title("Make your video"), prog, stage, h("div", { class: "row" }, save, cancel), dl,
-      noVideo ? h("p", { class: "hint" }, "This browser cannot save MP4, so the video is recorded live as WebM instead (the video plays in real time while saving).") : null));
+      noVideo ? h("p", { class: "hint" }, "This browser cannot save MP4, so the video is recorded live as WebM instead (the video plays in real time while saving).") : null),
+    h("div", { class: "row" }, resetButton(videoPage)));
 
   mount(videoPage, { title: "Design video", step: "video", content, back: "create", next: "home", nextLabel: "Finish" });
 

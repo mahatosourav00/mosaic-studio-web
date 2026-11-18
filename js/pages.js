@@ -1,5 +1,5 @@
 // Pages: home, pictures, prepare, design, create. (The video page is in video-page.js.)
-import { app, go, mount, persist, steps } from "./app.js";
+import { app, go, mount, persist, steps, resetSettings, resetButton } from "./app.js";
 import { h, $, card, title, row, toggle, slider, seg, select, color, number, banner, group, sheet, syncAll, toast } from "./ui.js";
 import { PRESETS, SHAPES, TILE_SHAPES, EXACT_SIZES, defaults, stillPlan, repeatAdvice, maxStillPixels, isPhone, toFile, fromText } from "./settings.js";
 import { buildMosaic, getPrepared } from "./mosaic.js";
@@ -20,7 +20,7 @@ export function home() {
     h("div", { class: "row" },
       h("button", { class: "btn", onclick: () => { const a = h("a", { href: URL.createObjectURL(toFile(s())), download: "mosaic-settings.json" }); a.click(); } }, "Save settings file"),
       h("button", { class: "btn", onclick: () => fileIn.click() }, "Load settings file"),
-      h("button", { class: "btn ghost", onclick: () => { app.settings = Object.assign(app.settings, defaults()); persist(); toast("Settings reset."); } }, "Reset")),
+      h("button", { class: "btn ghost", onclick: () => { document.querySelector(".sheet-back")?.click(); resetSettings(); } }, "Reset to defaults")),
     fileIn]);
   const content = h("div", { class: "page" },
     h("div", { class: "hero" },
@@ -109,6 +109,7 @@ export function prepare() {
     card(title("See what will change"), h("p", { class: "hint" }, `Checks your ${app.photos.length} photos and shows which are kept, trimmed, left out or treated as duplicates.`),
       h("button", { class: "btn", id: "prevBtn", onclick: runReport, disabled: !app.photos.length }, "Preview what will change"),
       h("progress", { id: "prevProg", value: 0, max: 1, hidden: true }), report),
+    h("div", { class: "row" }, resetButton(prepare)),
     h("p", { class: "foot" }, "“Fix sideways photos” is not in the web version yet. Phones already rotate photos upright."));
   dis.append(
     toggle(st, "trim_borders", { label: "Trim borders and frames", help: "prep_trim", onChange: persist }),
@@ -224,7 +225,8 @@ export function design() {
       number(st, "seed", { label: "Variation number", help: "seed", min: 0, max: 99999, step: 1, onChange: persist }),
     ], { sub: "10 options" }),
     card(title("Try it first"), h("p", { class: "hint" }, "Builds a small, fast draft so you can check the arrangement and colours."),
-      h("button", { class: "btn", id: "pvBtn", onclick: preview }, "Preview mosaic"), h("progress", { id: "pvProg", value: 0, max: 1, hidden: true })));
+      h("button", { class: "btn", id: "pvBtn", onclick: preview }, "Preview mosaic"), h("progress", { id: "pvProg", value: 0, max: 1, hidden: true })),
+    h("div", { class: "row" }, resetButton(design)));
   mount(design, { title: "Design mosaic", step: "design", content: root, back: "prepare", next: "create" });
   paintOutput(); refreshAdvice();
 }

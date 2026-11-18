@@ -96,7 +96,7 @@ Square, Wide), length and quality, plus an optional blurred backdrop.
 
 ### Settings
 
-Your options are remembered in the browser. A small **Settings** link at the bottom of the home screen lets you save
+Your options are remembered in the browser. Every settings page (Prepare, Design and Video) ends with a **Reset to defaults** button that puts every option back to its default, with an **Undo** if you tap it by mistake. A small **Settings** link at the bottom of the home screen lets you save
 them to a `mosaic-settings.json` file, load them on another device, or reset to the defaults. Your photos are never
 stored in the settings file.
 
