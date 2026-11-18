@@ -52,7 +52,7 @@ if ("serviceWorker" in navigator && location.protocol !== "file:") {
   navigator.serviceWorker.register("sw.js").then((reg) => {
     reg.addEventListener("updatefound", () => {
       const w = reg.installing;
-      w && w.addEventListener("statechange", () => { if (w.state === "installed" && navigator.serviceWorker.controller) toast("A new version is ready.", { action: "Update", fn: () => w.postMessage("skipWaiting") }); });
+      w && w.addEventListener("statechange", () => { if (w.state === "installed" && navigator.serviceWorker.controller) toast("A new version is ready.", { action: "Update", ms: 60000, fn: () => w.postMessage("skipWaiting") }); });
     });
   }).catch(() => {});
   let reloaded = false;
