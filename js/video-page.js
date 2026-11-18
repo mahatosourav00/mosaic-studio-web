@@ -22,7 +22,7 @@ export async function videoPage() {
   const info = h("p", { class: "hint", role: "status" }, "Starting…");
   const playBtn = h("button", { class: "btn", type: "button" }, "Pause"), restart = h("button", { class: "btn", type: "button" }, "Restart");
   const styles = h("div", { class: "grid styles" });
-  const save = h("button", { class: "btn primary big", style: { flex: 1 } }, "Save video"), cancel = h("button", { class: "btn big", hidden: true }, "Cancel");
+  const save = h("button", { class: "btn primary big", style: { flex: 1 } }, "Make my video"), cancel = h("button", { class: "btn big", hidden: true }, "Cancel");
   const prog = h("progress", { value: 0, max: 1, hidden: true }), stage = h("p", { class: "hint", role: "status" });
   const dl = h("a", { class: "btn primary", style: { display: "none" } });
   const noVideo = typeof VideoEncoder === "undefined";
@@ -48,7 +48,7 @@ export async function videoPage() {
       slider(st, "pulses", { label: "Arrival waves", help: "pulses", min: 0, max: 8, step: 1, onChange: (v, d) => { persist(); d && later(); } }),
       toggle(st, "backdrop", { label: "Blurred backdrop", help: "backdrop", onChange: change }),
     ], { sub: "9 options" }),
-    card(title("Save"), prog, stage, h("div", { class: "row" }, save, cancel), dl,
+    card(title("Make your video"), prog, stage, h("div", { class: "row" }, save, cancel), dl,
       noVideo ? h("p", { class: "hint" }, "This browser cannot save MP4, so the video is recorded live as WebM instead (the video plays in real time while saving).") : null));
 
   mount(videoPage, { title: "Design video", step: "video", content, back: "create", next: "home", nextLabel: "Finish" });
