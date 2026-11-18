@@ -344,16 +344,13 @@ impl Renderer {
 
     /// Plan the animation. `cells` = cell part of solve_mosaic output; `tile_rgb4` = T x 48 bytes.
     /// `o` = [style, duration, video_aspect, hero_tiles, hero_size, flight_scale, pulses, pulse_depth, frame_margin, seed,
-    ///        tint(0/1), dof, glow, particles, backdrop(0/1), gap_ratio, bg_r, bg_g, bg_b]  (bg in 0..1),
-    ///        optionally followed by [flight_speed, arrival_spread, camera_motion, spin, reveal_time] (missing = as designed).
+    ///        tint(0/1), dof, glow, particles, backdrop(0/1), gap_ratio, bg_r, bg_g, bg_b]  (bg in 0..1).
     /// Returns the tile ids of the showcase photos, in showcase order (supply their hi-res pictures to `set_heroes`).
     pub fn set_scene(&mut self, cells: &[f32], cols: u32, rows: u32, tile_ratio: f32, tile_rgb4: &[u8], o: &[f64]) -> Result<Vec<u32>, JsError> {
         if o.len() < 19 { return Err(JsError::new("scene options need 19 numbers")); }
         let n_tiles = tile_rgb4.len() / 48;
-        let ex = |i: usize, d: f64| o.get(i).copied().filter(|v| v.is_finite()).unwrap_or(d);
         let vp = VideoParams { style: o[0] as u8, duration: o[1], aspect: o[2], tile_ratio: tile_ratio as f64, hero_tiles: o[3] as usize,
-            hero_size: o[4], flight_scale: o[5], pulses: o[6], pulse_depth: o[7], frame_margin: o[8], seed: o[9] as u64, tint: o[10] > 0.5,
-            flight_speed: ex(19, 1.0), arrival_spread: ex(20, 1.0), camera_motion: ex(21, 1.0), spin: ex(22, 1.0), reveal_time: ex(23, 0.78) };
+            hero_size: o[4], flight_scale: o[5], pulses: o[6], pulse_depth: o[7], frame_margin: o[8], seed: o[9] as u64, tint: o[10] > 0.5 };
         let m = MosaicIn { cols: cols as usize, rows: rows as usize, ratio: tile_ratio as f64, cells, tile_rgb4, n_tiles };
         let plan = animation::make_plan(&m, &vp);
         let n = plan.n;

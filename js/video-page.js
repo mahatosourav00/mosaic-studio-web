@@ -1,6 +1,6 @@
 // Video page: live preview, style and every video option, save as MP4 (or WebM).
 import { app, go, mount, persist, resetButton } from "./app.js";
-import { h, $, card, title, row, toggle, slider, seg, select, color, group, toast } from "./ui.js";
+import { h, $, card, title, row, toggle, slider, seg, select, group, toast } from "./ui.js";
 import { STYLES, VIDEO_SHAPES } from "./settings.js";
 import { createPlayer, exportMp4, exportWebm } from "./video.js";
 
@@ -48,19 +48,6 @@ export async function videoPage() {
       slider(st, "pulses", { label: "Arrival waves", help: "pulses", min: 0, max: 8, step: 1, onChange: (v, d) => { persist(); d && later(); } }),
       toggle(st, "backdrop", { label: "Blurred backdrop", help: "backdrop", onChange: change }),
     ], { sub: "9 options" }),
-    group("Look and motion", [
-      slider(st, "hero_size", { label: "Showcase photo size", help: "hero_size", min: 0.2, max: 0.6, step: 0.02, fmt: (v) => Math.round(v * 100) + "%", onChange: (v, d) => { persist(); d && later(); } }),
-      slider(st, "flight_scale", { label: "How far tiles fly in from", help: "flight_scale", min: 1, max: 3, step: 0.1, fmt: (v) => v.toFixed(1) + "x", onChange: (v, d) => { persist(); d && later(); } }),
-      slider(st, "flight_speed", { label: "Tile flight time", help: "flight_speed", min: 0.6, max: 1.6, step: 0.05, fmt: (v) => Math.round(v * 100) + "%", onChange: (v, d) => { persist(); d && later(); } }),
-      slider(st, "arrival_spread", { label: "How long tiles keep arriving", help: "arrival_spread", min: 0.6, max: 1.2, step: 0.05, fmt: (v) => Math.round(v * 100) + "%", onChange: (v, d) => { persist(); d && later(); } }),
-      slider(st, "spin", { label: "Tile spin and tilt", help: "spin", min: 0, max: 2, step: 0.1, fmt: (v) => Math.round(v * 100) + "%", onChange: (v, d) => { persist(); d && later(); } }),
-      slider(st, "pulse_depth", { label: "Arrival wave strength", help: "pulse_depth", min: 0, max: 1, step: 0.05, fmt: (v) => Math.round(v * 100) + "%", onChange: (v, d) => { persist(); d && later(); } }),
-      slider(st, "camera_motion", { label: "Camera sway", help: "camera_motion", min: 0, max: 2, step: 0.1, fmt: (v) => Math.round(v * 100) + "%", onChange: (v, d) => { persist(); d && later(); } }),
-      slider(st, "frame_margin", { label: "Camera framing (higher is closer)", help: "frame_margin", min: 0.5, max: 1, step: 0.02, fmt: (v) => Math.round(v * 100) + "%", onChange: (v, d) => { persist(); d && later(); } }),
-      slider(st, "reveal_time", { label: "Final picture appears at", help: "reveal_time", min: 0.6, max: 0.8, step: 0.02, fmt: (v) => Math.round(v * 100) + "%", onChange: (v, d) => { persist(); d && later(); } }),
-      color(st, "bg_color", { label: "Background colour", help: "bg_color", onChange: change }),
-      h("div", { class: "row" }, h("button", { class: "btn", type: "button", onclick: () => { st.anim_seed = 1 + Math.floor(Math.random() * 9999); change(); toast("Shuffled the tile order and paths."); } }, "Shuffle the animation")),
-    ], { sub: "11 options" }),
     card(title("Make your video"), prog, stage, h("div", { class: "row" }, save, cancel), dl,
       noVideo ? h("p", { class: "hint" }, "This browser cannot save MP4, so the video is recorded live as WebM instead (the video plays in real time while saving).") : null),
     h("div", { class: "row" }, resetButton(videoPage)));

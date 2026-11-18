@@ -137,10 +137,9 @@ export function syncAll(root) { root.querySelectorAll("*").forEach((n) => n.sync
 
 // ---- toasts ----------------------------------------------------------------------------------
 let toastTimer;
-export function toast(msg, { action, fn, ms } = {}) {
+export function toast(msg, { action, fn, ms = 3500 } = {}) {
   const t = $("#toast"); if (!t) return;
-  const hide = () => { clearTimeout(toastTimer); t.hidden = true; };
-  t.replaceChildren(h("span", {}, msg), action ? h("button", { class: "chip", onclick: () => { hide(); fn?.(); } }, action) : null);
+  t.replaceChildren(h("span", {}, msg), action ? h("button", { class: "chip", onclick: fn }, action) : null);
   t.hidden = false; clearTimeout(toastTimer);
-  toastTimer = setTimeout(hide, ms ?? (action ? 8000 : 3500));   // a message with a button stays a little longer, but never forever
+  if (!action) toastTimer = setTimeout(() => (t.hidden = true), ms);
 }

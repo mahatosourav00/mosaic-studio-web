@@ -1,24 +1,10 @@
 // Thin loader for the Rust/WASM core (pkg/ is produced by build.ps1 / CI).
 let mod = null;
-let compiled = null;
-
-/** The compiled WebAssembly module. Compiled once on the page and handed to the workers, so a phone does not compile
- *  the 4 MB module again in every worker. */
-export function wasmModule() {
-  return (compiled ||= (async () => {
-    const url = new URL("../pkg/mosaic_core_bg.wasm", import.meta.url);
-    try { return await WebAssembly.compileStreaming(fetch(url)); }
-    catch { return await WebAssembly.compile(await (await fetch(url)).arrayBuffer()); }
-  })());
-}
-/** In a worker: use the module the page already compiled. */
-export function useWasmModule(m) { if (m && !compiled) compiled = Promise.resolve(m); }
 
 export async function loadCore() {
   if (!mod) {
-    const m = await import("../pkg/mosaic_core.js");
-    await m.default({ module_or_path: await wasmModule() });
-    mod = m;
+    mod = await import("../pkg/mosaic_core.js");
+    await mod.default();
   }
   return mod;
 }

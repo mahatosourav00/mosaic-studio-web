@@ -215,16 +215,6 @@ export const HELP = {
   "text": "How many photos fly large through the foreground so viewers can see them. 0 turns them off.",
   "rec": "12 to 18"
  },
- "hero_size": { "title": "Showcase photo size", "text": "How big the showcase photos are as they fly past. Larger photos are easier to see but cover more of the mosaic.", "rec": "About 38%" },
- "flight_scale": { "title": "How far tiles fly in from", "text": "How far away tiles start before they fly into place. Higher feels more dramatic and sweeping.", "rec": "About 1.7x" },
- "flight_speed": { "title": "Tile flight time", "text": "How long each tile takes to fly into place. Lower is snappier, higher is slow and floaty.", "rec": "100%" },
- "arrival_spread": { "title": "How long tiles keep arriving", "text": "Lower packs the arrivals into a shorter, busier build-up. Higher spreads them over more of the video.", "rec": "100%" },
- "spin": { "title": "Tile spin and tilt", "text": "How much tiles tumble as they fly. 0 makes them glide in flat.", "rec": "100%" },
- "pulse_depth": { "title": "Arrival wave strength", "text": "How strongly the arrivals come in bursts. 0 is a steady stream. It only matters when Arrival waves is above 0.", "rec": "About 55%" },
- "camera_motion": { "title": "Camera sway", "text": "How much the camera drifts and wobbles while tiles arrive. 0 keeps it steady.", "rec": "100%" },
- "frame_margin": { "title": "Camera framing", "text": "How closely the camera frames the finished mosaic at the end. Higher is closer, lower leaves more space around it.", "rec": "About 0.8" },
- "reveal_time": { "title": "Final picture appears at", "text": "When the finished photo fades in over the tiles, as a share of the video length. Earlier gives it more time on screen.", "rec": "78%" },
- "bg_color": { "title": "Background colour", "text": "The colour behind the mosaic in the video.", "rec": "Near black" },
  "dof": {
   "title": "Depth blur",
   "text": "Blurs tiles that are away from the focus, like a real camera. It adds depth and a premium feel.",
