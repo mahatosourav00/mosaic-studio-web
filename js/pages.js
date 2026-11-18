@@ -14,6 +14,14 @@ export function home() {
     const f = e.target.files[0]; if (!f) return;
     try { fromText(await f.text(), s()); persist(); toast("Settings loaded."); } catch { toast("That file is not a settings file."); }
   } });
+  // Settings file tools live in a small sheet instead of taking space on the home screen.
+  const openSettings = () => sheet("Settings", [
+    h("p", {}, "Save your options to a file, load them again later (or on another device), or put everything back to the defaults. Your photos are never stored in a settings file."),
+    h("div", { class: "row" },
+      h("button", { class: "btn", onclick: () => { const a = h("a", { href: URL.createObjectURL(toFile(s())), download: "mosaic-settings.json" }); a.click(); } }, "Save settings file"),
+      h("button", { class: "btn", onclick: () => fileIn.click() }, "Load settings file"),
+      h("button", { class: "btn ghost", onclick: () => { app.settings = Object.assign(app.settings, defaults()); persist(); toast("Settings reset."); } }, "Reset")),
+    fileIn]);
   const content = h("div", { class: "page" },
     h("div", { class: "hero" },
       h("div", { class: "logo", html: '<svg viewBox="0 0 48 48" width="44" height="44" aria-hidden="true"><rect x="3" y="3" width="19" height="19" rx="4" fill="#8b7cff"/><rect x="26" y="3" width="19" height="19" rx="4" fill="#4fc3f7"/><rect x="3" y="26" width="19" height="19" rx="4" fill="#4fc3f7" opacity=".7"/><rect x="26" y="26" width="19" height="19" rx="4" fill="#8b7cff" opacity=".7"/></svg>' }),
@@ -22,11 +30,7 @@ export function home() {
       h("button", { class: "btn primary big", onclick: () => go("pictures") }, "Create a mosaic")),
     results ? card(title("Your last mosaic", `${results.width} x ${results.height} px`), h("img", { class: "thumb-wide", src: results.url, alt: "Your last mosaic" }),
       h("div", { class: "row" }, h("button", { class: "btn", onclick: () => go("create") }, "Open"), steps().some(([k]) => k === "video") ? h("button", { class: "btn primary", onclick: () => go("video") }, "Make an animation") : null)) : null,
-    card(title("Settings"), h("div", { class: "row" },
-      h("button", { class: "btn", onclick: () => { const a = h("a", { href: URL.createObjectURL(toFile(s())), download: "mosaic-settings.json" }); a.click(); } }, "Save settings file"),
-      h("button", { class: "btn", onclick: () => fileIn.click() }, "Load settings file"),
-      h("button", { class: "btn ghost", onclick: () => { app.settings = Object.assign(app.settings, defaults()); persist(); toast("Settings reset."); } }, "Reset")), fileIn),
-    h("p", { class: "foot" }, h("a", { href: "#check" }, "Engine check"), " · Plugins are not in the web version yet"));
+    h("p", { class: "foot" }, h("button", { class: "linkish", type: "button", onclick: openSettings }, "Settings"), " · ", h("a", { href: "#check" }, "Engine check"), " · Plugins are not in the web version yet"));
   mount(home, { title: "Mosaic Studio", step: null, content, back: null });
 }
 

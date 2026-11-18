@@ -162,3 +162,4 @@ canvas.stage { width: 100%; height: auto; max-height: 62vh; object-fit: contain;
 .bad { color: var(--bad); } .ok { color: var(--ok); }
 @media (min-width: 720px) { .top h1 { font-size: 21px; } main { padding-top: 14px; } .hero h2 { font-size: 34px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+.foot .linkish { background: none; border: 0; padding: 0; color: var(--accent2); font: inherit; cursor: pointer; text-decoration: underline; }
