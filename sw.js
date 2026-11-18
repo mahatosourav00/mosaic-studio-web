@@ -4,7 +4,7 @@ const VERSION = "v0.1.1";
 const CACHE = `mosaic-studio-${VERSION}`;
 const SHELL = [
   "./", "index.html", "manifest.webmanifest", "css/app.css",
-  "js/main.js", "js/engine.js", "js/settings.js", "js/mosaic.js", "js/video.js", "js/app.js", "js/ui.js", "js/pages.js", "js/video-page.js", "js/prep.js", "js/dpi.js", "js/help.js", "vendor/mp4-muxer.mjs",
+  "js/main.js", "js/engine.js", "js/settings.js", "js/mosaic.js", "js/video.js", "js/app.js", "js/ui.js", "js/pages.js", "js/video-page.js", "js/prep.js", "js/prep-one.js", "js/prep-worker.js", "js/dpi.js", "js/help.js", "vendor/mp4-muxer.mjs",
   "pkg/mosaic_core.js", "pkg/mosaic_core_bg.wasm",
   "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-192.png", "icons/maskable-512.png",
 ];

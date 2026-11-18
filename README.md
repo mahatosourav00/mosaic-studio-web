@@ -106,7 +106,7 @@ The full flow works: Pictures → Prepare → Design → Create → Video, with 
 preparation, the subject map, the solver, the still renderer and the animation all run in Rust/WebAssembly.
 
 **Not in the web version yet:** plugins and the plugin library, "video from a saved mosaic", TIFF, H.265, GIF output,
-"fix sideways photos" (phones already rotate photos upright), a Web Worker for the heavy steps, and real-device and
+"fix sideways photos" (phones already rotate photos upright), Web Workers for the solver and renderer (reading and preparing photos already runs in several workers at once), and real-device and
 offline testing.
 
 **Limits to know about:** very large photo sets and very large outputs are limited by your device's memory; the app
@@ -138,7 +138,7 @@ On Windows without Visual Studio Build Tools, `build.ps1` uses the GNU host tool
 | `crates/mosaic-core/src/still.rs`, `render.rs` | the finished still picture |
 | `crates/mosaic-core/src/animation.rs`, `gpu.rs`, `shaders/` | the four animation styles and the wgpu renderer (WebGPU, WebGL2 fallback) |
 | `js/pages.js`, `js/video-page.js`, `js/ui.js`, `js/app.js` | the mobile-first interface and page flow |
-| `js/mosaic.js`, `js/prep.js`, `js/engine.js` | glue between the interface and the WebAssembly core |
+| `js/mosaic.js`, `js/prep.js`, `js/prep-one.js`, `js/prep-worker.js`, `js/engine.js` | glue between the interface and the WebAssembly core |
 | `js/video.js` | player and MP4 (WebCodecs) / WebM export |
 | `js/settings.js`, `js/help.js` | every option in one object, and the "?" guide texts |
 | `sw.js`, `manifest.webmanifest` | offline support and installability |
