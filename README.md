@@ -37,6 +37,13 @@ With only 119 photos, the *Balanced* result repeats each photo about 13 times an
 *Fine detail* uses the same photos, but with far more (and smaller) tiles the planet's land, ocean and clouds come
 through clearly. More photos (300+) always gives a richer, less repetitive mosaic.
 
+**It assembles itself.** The same mosaic as an animation, in two of the four styles (*Swarm* on the left, *Vortex* on the right). These GIFs are small, low-colour previews; the app exports full-resolution MP4 video, far smoother.
+
+<p align="center">
+  <img src="docs/images/anim-swarm.gif" alt="Animation: tiles swoop in from all sides and assemble into a picture of Earth (Swarm style)" width="40%">
+  <img src="docs/images/anim-vortex.gif" alt="Animation: tiles spiral in and assemble into a picture of Earth (Vortex style)" width="40%">
+</p>
+
 **Black and white.** Switch on *Black and white* and every tile is converted, so the picture is built from light and
 shade alone (2,500 tiles, 3200 x 3200 px):
 
