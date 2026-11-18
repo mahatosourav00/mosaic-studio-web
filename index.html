@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mosaic Studio</title>
+<meta name="description" content="Turn your photos into one big picture made of tiny photos. Runs entirely on your device.">
+<meta name="theme-color" content="#0b0b12">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mosaic Studio">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<header class="top">
+  <button id="back" class="icon-btn" aria-label="Back" hidden>&#8592;</button>
+  <h1 id="title">Mosaic Studio</h1>
+  <button id="install" class="chip" hidden>Install</button>
+</header>
+<nav id="rail" class="rail" aria-label="Progress" hidden></nav>
+<main id="view" tabindex="-1"></main>
+<div id="bar" class="actionbar" hidden></div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<noscript><p style="padding:16px">Mosaic Studio needs JavaScript.</p></noscript>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
