@@ -1,6 +1,6 @@
 // Service worker: precache the app shell + wasm so the app works offline.
 // Bump VERSION on every release (CI does this with the commit hash) so clients pick up the update.
-const VERSION = "v0.1.0";
+const VERSION = "v0.1.1";
 const CACHE = `mosaic-studio-${VERSION}`;
 const SHELL = [
   "./", "index.html", "manifest.webmanifest", "css/app.css",
