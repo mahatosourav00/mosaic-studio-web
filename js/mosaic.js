@@ -1,5 +1,5 @@
 // Photos -> tiles -> solve (WASM) -> finished still. Runs on the main thread for now (moves to a worker later).
-import { loadCore } from "./engine.js";
+import { loadCore, wasmModule } from "./engine.js";
 import { tileRatio, stillPlan } from "./settings.js";
 import { preparePhotos, prepKey, decode, detectFaces } from "./prep.js";
 import { withDpi } from "./dpi.js";
@@ -132,7 +132,7 @@ export async function buildMosaic({ photos, main, settings, onStage, signal, pre
   const core = await loadCore();
   const s = preview ? { ...settings, output_mode: "screen", cell_px: 24 } : settings;
   onStage?.("Reading your photos", 0);
-  const prep = await getPrepared(photos, s, { onProgress: (f) => onStage?.("Reading your photos", f), signal });
+  const prep = await getPrepared(photos, s, { onProgress: (f, d, t) => onStage?.("Reading your photos", f, `${d} of ${t}`), signal });
   if (prep.count < 4) throw new Error(`Only ${prep.count} usable photos were found (${prep.skipped} left out). Pick at least 4, or loosen the photo preparation options.`);
   await tick();
   onStage?.("Reading the main picture", 0);
@@ -149,6 +149,7 @@ export async function buildMosaic({ photos, main, settings, onStage, signal, pre
   const r = tileRatio(s);
   const job = { rgb: m.rgb, cols: m.cols, rows: m.rows, subject: m.subject, patches: prep.patches, opts, tiles: prep.tiles, tw: prep.tw, th: prep.th,
                 ratio: r, cellH: plan.cellH, gap: s.gap_px, gapColor: new Uint8Array(s.gap_color), tint: s.tint > 0 };
+  try { job.wasm = await wasmModule(); } catch {}
   const { out, rgba } = await solveAndRender(core, job, onStage, signal);
   const stats = { violations: out[0], raised: !!out[1], swaps: out[2], minUsed: out[3], maxUsed: out[4], unused: out[5] };
   const cells = out.subarray(6);

@@ -36,6 +36,7 @@ export function defaults() {
     style: "swarm", duration: 20, quality: "standard", video_res: phone ? 720 : 1080, fps: 30, video_aspect: "same",
     hero_tiles: 12, hero_size: 0.38, flight_scale: 1.7, pulses: 4, pulse_depth: 0.55, dof: 0.7, frame_margin: 0.8,
     backdrop: true, glow: 0.6, particles: phone ? 120 : 220, bg_color: [10, 10, 14], anim_seed: 7,
+    flight_speed: 1, arrival_spread: 1, camera_motion: 1, spin: 1, reveal_time: 0.78,
   };
 }
 

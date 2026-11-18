@@ -4,6 +4,7 @@ import { loadCore } from "./engine.js";
 import { tileRatio } from "./settings.js";
 
 import { isPhone } from "./settings.js";
+import { wasmModule } from "./engine.js";
 import { processPhoto, decode, detectFaces } from "./prep-one.js";
 export { decode, detectFaces };
 
@@ -30,28 +31,33 @@ const hamming = (a, b) => { const c = (v) => { v -= (v >>> 1) & 0x55555555; v = 
 async function processAll(core, files, cfg, { onProgress, signal }) {
   const results = new Array(files.length);
   let done = 0;
-  const report = () => onProgress?.(done / files.length);
+  const report = () => onProgress?.(done / files.length, done, files.length);
   const aborted = () => signal?.aborted && (() => { throw new DOMException("Cancelled", "AbortError"); })();
-  const n = Math.max(1, Math.min(isPhone() ? 3 : 4, (navigator.hardwareConcurrency || 4) - 1, files.length));
+  const n = Math.max(1, Math.min(isPhone() ? 2 : 4, (navigator.hardwareConcurrency || 4) - 1, files.length));
   if (typeof Worker !== "undefined" && files.length > 1) {
     const workers = [];
+    let wasm = null;
+    try { wasm = await wasmModule(); } catch {}           // compiled once here, shared with every worker
     try {
       await new Promise((resolve, reject) => {
-        let next = 0, active = 0, dead = false;
-        const stop = (err) => { if (dead) return; dead = true; workers.forEach((w) => w.terminate()); err ? reject(err) : resolve(); };
+        let next = 0, active = 0, dead = false, lastSign = Date.now();
+        const stop = (err) => { clearInterval(watch); if (dead) return; dead = true; workers.forEach((w) => w.terminate()); err ? reject(err) : resolve(); };
+        // safety net: if nothing finishes for a long time (a worker died silently), carry on without workers
+        const watch = setInterval(() => { if (Date.now() - lastSign > 45000) stop(new Error("workers stalled")); }, 5000);
         const feed = (w) => {
           if (dead) return;
           if (signal?.aborted) return stop(new DOMException("Cancelled", "AbortError"));
           if (next >= files.length) { if (--active === 0) stop(); return; }
           const id = next++; w.currentId = id;
-          w.postMessage({ id, file: files[id], cfg });
+          w.postMessage({ id, file: files[id], cfg, wasm: w.sentWasm ? undefined : wasm });
+          w.sentWasm = true;
         };
         for (let k = 0; k < n; k++) {
           const w = new Worker(new URL("./prep-worker.js", import.meta.url), { type: "module" });
           workers.push(w); active++;
           w.onmessage = ({ data }) => {
             results[data.id] = data.error ? { status: "rejected", reason: "could not be read", trimmed: false, thumb: null } : data.r;
-            done++; report(); feed(w);
+            done++; lastSign = Date.now(); report(); feed(w);
           };
           w.onerror = (ev) => { ev.preventDefault?.(); stop(new Error("worker failed")); };
           feed(w);

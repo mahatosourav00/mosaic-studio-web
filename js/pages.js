@@ -260,7 +260,7 @@ export function create() {
     stage.textContent = "Getting ready…"; prog.removeAttribute("value");     // moving "working" bar until real progress arrives
     let wake = null, finished = false; navigator.wakeLock?.request("screen").then((l) => { if (finished) l.release(); else wake = l; }, () => {});   // do not wait for it
     try {
-      const r = await buildMosaic({ photos: app.photos, main: app.main, settings: st, signal: ctl.signal, onStage: (n, f) => { stage.textContent = n; if (f > 0) prog.value = f; else prog.removeAttribute("value"); } });
+      const r = await buildMosaic({ photos: app.photos, main: app.main, settings: st, signal: ctl.signal, onStage: (n, f, d) => { stage.textContent = d ? `${n} (${d})` : n; if (f > 0) prog.value = f; else prog.removeAttribute("value"); } });
       if (app.result) URL.revokeObjectURL(app.result.url);
       app.result = { ...r, url: URL.createObjectURL(r.blob) };
       app.aspect = (r.cols * (st.tile_aspect.split(":")[0] / st.tile_aspect.split(":")[1])) / r.rows;
