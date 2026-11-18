@@ -97,6 +97,32 @@ function overlayWith(ctx, m, s, W, H) {
   }
 }
 
+/** Solve and paint in a worker (page stays responsive); falls back to the main thread if workers are unavailable. */
+async function solveAndRender(core, j, onStage, signal) {
+  if (typeof Worker !== "undefined") {
+    try {
+      return await new Promise((resolve, reject) => {
+        const w = new Worker(new URL("./solve-worker.js", import.meta.url), { type: "module" });
+        const fail = (e) => { w.terminate(); reject(e); };
+        w.onmessage = ({ data }) => {
+          if (data.done) { w.terminate(); resolve(data); }
+          else if (data.error) fail(Object.assign(new Error(data.error), { real: true }));
+          else onStage?.(data.stage, data.progress);
+        };
+        w.onerror = (ev) => { ev.preventDefault?.(); fail(new Error("worker failed")); };
+        signal?.addEventListener("abort", () => fail(new DOMException("Cancelled", "AbortError")), { once: true });
+        w.postMessage(j);
+      });
+    } catch (e) {
+      if (e?.name === "AbortError" || e?.real) throw e;
+    }
+  }
+  const out = core.solve_mosaic(j.rgb, j.cols, j.rows, j.subject, j.patches, j.opts, (f) => onStage?.("Matching photos to the picture", f));
+  await tick();
+  const rgba = core.render_still(out.subarray(6), j.tiles, j.tw, j.th, j.cols, j.rows, j.ratio, j.cellH, j.gap, j.gapColor, j.tint);
+  return { out, rgba };
+}
+
 /**
  * Full pipeline. `onStage(name, fraction)` drives the progress bar. `preview` makes a small fast draft.
  * Returns {blob, width, height, dpi, capped, stats, scene (not for previews), ...}.
@@ -118,15 +144,15 @@ export async function buildMosaic({ photos, main, settings, onStage, signal, pre
     s.allow_flip ? 1 : 0, s.even_usage, s.tint, s.seed]);
   onStage?.("Matching photos to the picture", 0);
   await tick();
-  const out = core.solve_mosaic(m.rgb, m.cols, m.rows, m.subject, prep.patches, opts, (f) => onStage?.("Matching photos to the picture", f));
+  const plan = stillPlan(s, m.cols, m.rows);
+  const r = tileRatio(s);
+  const job = { rgb: m.rgb, cols: m.cols, rows: m.rows, subject: m.subject, patches: prep.patches, opts, tiles: prep.tiles, tw: prep.tw, th: prep.th,
+                ratio: r, cellH: plan.cellH, gap: s.gap_px, gapColor: new Uint8Array(s.gap_color), tint: s.tint > 0 };
+  const { out, rgba } = await solveAndRender(core, job, onStage, signal);
   const stats = { violations: out[0], raised: !!out[1], swaps: out[2], minUsed: out[3], maxUsed: out[4], unused: out[5] };
   const cells = out.subarray(6);
-
-  const plan = stillPlan(s, m.cols, m.rows);
-  onStage?.("Painting the mosaic", 0.5);
+  onStage?.("Painting the mosaic", 0.6);
   await tick();
-  const r = tileRatio(s);
-  const rgba = core.render_still(cells, prep.tiles, prep.tw, prep.th, m.cols, m.rows, r, plan.cellH, s.gap_px, new Uint8Array(s.gap_color), s.tint > 0);
   const W = plan.width, H = plan.height;
   const cv = makeCanvas(W, H), ctx = cv.getContext("2d");
   ctx.putImageData(new ImageData(new Uint8ClampedArray(rgba.buffer, rgba.byteOffset, rgba.length), W, H), 0, 0);
