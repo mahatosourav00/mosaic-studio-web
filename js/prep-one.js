@@ -8,6 +8,52 @@ export async function decode(file) {
   catch { return null; }
 }
 
+const DECODE_MAX = 1024;   // phones decode photos no larger than this (tiles are only 128 px tall)
+
+/** Oriented pixel size of a JPEG read from its first bytes, or null (not a JPEG / unreadable). */
+async function readSize(file) {
+  try {
+    const v = new DataView(await file.slice(0, 131072).arrayBuffer());
+    if (v.getUint16(0) !== 0xffd8) return null;
+    let p = 2, w = 0, h = 0, orient = 1;
+    while (p + 4 <= v.byteLength) {
+      if (v.getUint8(p) !== 0xff) return null;
+      const m = v.getUint8(p + 1), len = v.getUint16(p + 2);
+      if (m === 0xff) { p++; continue; }
+      if (m === 0xe1 && len >= 14 && v.getUint32(p + 4) === 0x45786966) {           // "Exif"
+        const t = p + 10, le = v.getUint16(t) === 0x4949, ifd = t + v.getUint32(t + 4, le);
+        if (ifd + 2 <= v.byteLength) {
+          const n = v.getUint16(ifd, le);
+          for (let i = 0; i < n && ifd + 2 + i * 12 + 12 <= v.byteLength; i++) {
+            const e = ifd + 2 + i * 12;
+            if (v.getUint16(e, le) === 0x0112) orient = v.getUint16(e + 8, le);
+          }
+        }
+      } else if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) {
+        h = v.getUint16(p + 5); w = v.getUint16(p + 7); break;
+      }
+      p += 2 + len;
+    }
+    if (!w || !h) return null;
+    return orient >= 5 && orient <= 8 ? { w: h, h: w } : { w, h };
+  } catch { return null; }
+}
+
+/** Decode for preparation. With `small`, big JPEGs are decoded at reduced size (faster, far less memory). Returns { bmp, origW, origH } or null. */
+async function decodeForPrep(file, small) {
+  const sz = small ? await readSize(file) : null;
+  if (sz && Math.max(sz.w, sz.h) > DECODE_MAX) {
+    const k = DECODE_MAX / Math.max(sz.w, sz.h);
+    try {
+      const bmp = await createImageBitmap(file, { resizeWidth: Math.max(1, Math.round(sz.w * k)), resizeHeight: Math.max(1, Math.round(sz.h * k)), resizeQuality: "low" });
+      if (Math.abs(bmp.width / bmp.height - sz.w / sz.h) < 0.05) return { bmp, origW: sz.w, origH: sz.h };
+      bmp.close?.();                                  // orientation came out different from expected: use the safe path
+    } catch { /* fall through to the full decode */ }
+  }
+  const bmp = await decode(file);
+  return bmp && { bmp, origW: bmp.width, origH: bmp.height };
+}
+
 let faceDet;
 /** Face boxes as [x, y, w, h] fractions of the canvas, using the browser's FaceDetector when it exists. */
 export async function detectFaces(canvas) {
@@ -58,21 +104,22 @@ export async function processPhoto(core, file, cfg) {
   const out = { status: "ok", reason: "", trimmed: false, thumb: null };
   const T0 = performance.now(); let T = T0; const tm = {}; const lap = (k) => { const n = performance.now(); tm[k] = n - T; T = n; };
   out.tm = tm;
-  const bmp = await decode(file); lap("decode");
-  if (!bmp) { out.status = "rejected"; out.reason = "could not be read"; return out; }
+  const dec = await decodeForPrep(file, cfg.small); lap("decode");
+  if (!dec) { out.status = "rejected"; out.reason = "could not be read"; return out; }
+  const { bmp } = dec, sc = dec.origW / bmp.width;            // bitmap pixels -> original pixels
   const k = Math.min(1, WORK / Math.max(bmp.width, bmp.height));
   const ww = Math.max(1, Math.round(bmp.width * k)), wh = Math.max(1, Math.round(bmp.height * k));
   const wcv = makeCanvas(ww, wh), wctx = wcv.getContext("2d", { willReadFrequently: true });
   wctx.imageSmoothingQuality = "high"; wctx.drawImage(bmp, 0, 0, ww, wh);
   const work = wctx.getImageData(0, 0, ww, wh).data; lap("resize");
-  out.mp = bmp.width * bmp.height / 1e6;
+  out.mp = dec.origW * dec.origH / 1e6;
   // 1) borders
   const [t, b, l, r] = flags.trim ? Array.from(core.prep_trim_borders(work, ww, wh)) : [0, 0, 0, 0];
   out.trimmed = t + b + l + r > 0;
   const cw = ww - l - r, ch = wh - t - b;
   const body = out.trimmed ? subRect(work, ww, l, t, cw, ch) : work;
   // 2) filters (size is judged on the original, after trimming)
-  const origW = bmp.width - Math.round((l + r) / k), origH = bmp.height - Math.round((t + b) / k);
+  const origW = Math.round(dec.origW - (l + r) / k * sc), origH = Math.round(dec.origH - (t + b) / k * sc);
   lap("trim");
   const sharp = core.prep_sharpness(body, cw, ch); lap("sharpness");
   if (flags.filter && Math.min(origW, origH) < cfg.minSide) { out.status = "rejected"; out.reason = `too small (${origW}x${origH})`; }

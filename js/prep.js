@@ -8,7 +8,15 @@ import { processPhoto, decode, detectFaces } from "./prep-one.js";
 export { decode, detectFaces };
 
 const TILE_H = 128;        // stored tile height
-const DEBUG = /[?&]debug(&|=|$)/.test(location.search);
+const param = (k) => new URLSearchParams(location.search).get(k);
+/** Phones decode big photos at reduced size (add ?nosmall to the address to turn that off when comparing speed). */
+const smallDecode = () => isPhone() && param("nosmall") === null;
+/** How many photos are read at once. Phones get more now that each decode is light (override with ?workers=N). */
+const poolSize = (count) => {
+  const want = Number(param("workers")) || (isPhone() ? (smallDecode() ? 5 : 3) : 4);
+  return Math.max(1, Math.min(want, (navigator.hardwareConcurrency || 4) - 1, count));
+};
+const DEBUG =/[?&]debug(&|=|$)/.test(location.search);
 
 /** ?debug only: show where the "Reading your photos" time goes (summed over all photos, so it can exceed the wall time). */
 function debugReport(files, results, wall) {
@@ -17,7 +25,7 @@ function debugReport(files, results, wall) {
   const f = (v) => Math.round(v) + " ms";
   const lines = [`Reading photos: ${files.length} files in ${f(wall)} (${f(wall / files.length)}/photo)`,
     `avg size ${(mp / Math.max(1, n)).toFixed(1)} MP, ${n} read, ${failed} failed`,
-    `cores ${navigator.hardwareConcurrency}, memory ${navigator.deviceMemory ?? "?"} GB, phone mode ${isPhone()}, workers ${Math.max(1, Math.min(isPhone() ? 3 : 4, (navigator.hardwareConcurrency || 4) - 1, files.length))}`,
+    `cores ${navigator.hardwareConcurrency}, memory ${navigator.deviceMemory ?? "?"} GB, phone mode ${isPhone()}, workers ${poolSize(files.length)}, small decode ${smallDecode()}`,
     "per photo average: " + Object.entries(sum).map(([k, v]) => `${k} ${f(v / Math.max(1, n))}`).join(", ")];
   console.log(lines.join("\n"));
   let box = document.getElementById("debug-timing");
@@ -48,7 +56,7 @@ async function processAll(core, files, cfg, { onProgress, signal }) {
   let done = 0;
   const report = () => onProgress?.(done / files.length);
   const aborted = () => signal?.aborted && (() => { throw new DOMException("Cancelled", "AbortError"); })();
-  const n = Math.max(1, Math.min(isPhone() ? 3 : 4, (navigator.hardwareConcurrency || 4) - 1, files.length));
+  const n = poolSize(files.length);
   if (typeof Worker !== "undefined" && files.length > 1) {
     const workers = [];
     try {
@@ -97,7 +105,7 @@ export async function preparePhotos(files, s, { onProgress, signal, thumbs = fal
   const core = await loadCore();
   const flags = prepFlags(s);
   const ratio = tileRatio(s), tw = Math.round(TILE_H * ratio), th = TILE_H;
-  const cfg = { flags, ratio, tw, th, minSide: s.min_side, minSharp: s.min_sharpness, grayscale: s.grayscale, faces: s.detect_faces, thumbs };
+  const cfg = { flags, ratio, tw, th, minSide: s.min_side, minSharp: s.min_sharpness, grayscale: s.grayscale, faces: s.detect_faces, thumbs, small: smallDecode() };
   const t0 = performance.now();
   const results = await processAll(core, files, cfg, { onProgress, signal });
   if (DEBUG) debugReport(files, results, performance.now() - t0);
