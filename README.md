@@ -62,18 +62,17 @@ All the pictures below are made in the app from the same **1,285 public-domain N
 tiles, so the face, the turban and the pearl come through clearly. *Black and white* converts every tile, so the picture is
 built from light and shade alone. More photos (300+) always gives a richer, less repetitive mosaic.
 
-### It assembles itself, in four styles
+### It assembles itself
 
-The same mosaic as an animation. Each style has its own motion and camera. These GIFs are small previews; the app saves a
-smooth, full-resolution **MP4**.
+The same mosaic as an animation, in two of the four styles: **Swarm** (left) and **Vortex** (right). Each style has its own
+motion and camera. These GIFs are small previews; the app saves a smooth, full-resolution **MP4**. *Wave* and *Zoom* are
+described [below](#design-your-video).
 
 <p align="center">
-  <img src="docs/images/anim-vermeer-swarm.gif" alt="Swarm style" width="23%">
-  <img src="docs/images/anim-vermeer-vortex.gif" alt="Vortex style" width="23%">
-  <img src="docs/images/anim-vermeer-wave.gif" alt="Wave style" width="23%">
-  <img src="docs/images/anim-vermeer-zoom.gif" alt="Zoom style" width="23%">
+  <img src="docs/images/anim-vermeer-swarm.gif" alt="Swarm style: tiles swoop in from all sides" width="40%">
+  &nbsp;&nbsp;
+  <img src="docs/images/anim-vermeer-vortex.gif" alt="Vortex style: tiles spiral in while the camera circles" width="40%">
 </p>
-<p align="center"><sub><b>Swarm</b> · <b>Vortex</b> · <b>Wave</b> · <b>Zoom</b></sub></p>
 
 ---
 
