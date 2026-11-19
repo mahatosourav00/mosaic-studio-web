@@ -150,6 +150,10 @@ fn upload(device: &wgpu::Device, queue: &wgpu::Queue, label: &str, data: &[u8], 
 struct Opts {
     dur: f64, dof: f32, glow: f32, n_particles: usize, backdrop: bool, gap: f32, bg: [f32; 3],
     ease: f32, flash: f32, hold: f32,   // landing curve, landing flash strength, showcase dwell
+    mode: u32,                          // background: 0 blurred photo, 1 solid colour, 2 gradient
+    bg2: [f32; 3],                      // second colour (gradient)
+    amount: f32, vignette: f32, lights: f32,   // photo strength, edge darkening, drifting colour lights
+    accent: Option<[f32; 3]>,           // user colour for glow, dust and lights (None = from the photo)
 }
 
 struct Scene {
@@ -313,7 +317,7 @@ impl Renderer {
 
         let mkg = |buf: &wgpu::Buffer| device.create_bind_group(&wgpu::BindGroupDescriptor { label: None, layout: &bgl_u,
             entries: &[wgpu::BindGroupEntry { binding: 0, resource: buf.as_entire_binding() }] });
-        let (u_tile, u_over, u_back, u_part) = (ubo(&device, 144, "u_tile"), ubo(&device, 80, "u_over"), ubo(&device, 80, "u_back"), ubo(&device, 144, "u_part"));
+        let (u_tile, u_over, u_back, u_part) = (ubo(&device, 144, "u_tile"), ubo(&device, 80, "u_over"), ubo(&device, 112, "u_back"), ubo(&device, 144, "u_part"));
         let u_glow = [ubo(&device, 112, "u_glow0"), ubo(&device, 112, "u_glow1")];
         let (g_tile, g_over, g_back, g_part) = (mkg(&u_tile), mkg(&u_over), mkg(&u_back), mkg(&u_part));
         let g_glow = [mkg(&u_glow[0]), mkg(&u_glow[1])];
@@ -347,7 +351,9 @@ impl Renderer {
     /// `o` = [style, duration, video_aspect, hero_tiles, hero_size, flight_scale, pulses, pulse_depth, frame_margin, seed,
     ///        tint(0/1), dof, glow, particles, backdrop(0/1), gap_ratio, bg_r, bg_g, bg_b]  (bg in 0..1),
     ///        optionally followed by [flight_speed, arrival_spread, camera_motion, spin, reveal_time,
-    ///        entry, order, arc, ease, flash, hero_hold, cam_on(0/1), n_keys, then 7 numbers per camera keyframe] (missing = as designed).
+    ///        entry, order, arc, ease, flash, hero_hold,
+    ///        bg_mode(0 photo/1 solid/2 gradient), bg2_r, bg2_g, bg2_b, bg_amount, bg_vignette, bg_lights, accent_on(0/1), accent_r, accent_g, accent_b,
+    ///        cam_on(0/1), n_keys, then 7 numbers per camera keyframe] (missing = as designed).
     /// Returns the tile ids of the showcase photos, in showcase order (supply their hi-res pictures to `set_heroes`).
     pub fn set_scene(&mut self, cells: &[f32], cols: u32, rows: u32, tile_ratio: f32, tile_rgb4: &[u8], o: &[f64]) -> Result<Vec<u32>, JsError> {
         if o.len() < 19 { return Err(JsError::new("scene options need 19 numbers")); }
@@ -357,7 +363,7 @@ impl Renderer {
             hero_size: o[4], flight_scale: o[5], pulses: o[6], pulse_depth: o[7], frame_margin: o[8], seed: o[9] as u64, tint: o[10] > 0.5,
             flight_speed: ex(19, 1.0), arrival_spread: ex(20, 1.0), camera_motion: ex(21, 1.0), spin: ex(22, 1.0), reveal_time: ex(23, 0.78),
             entry: ex(24, 0.0) as u8, order: ex(25, 0.0) as u8, arc: ex(26, 1.0),
-            cam_keys: if ex(30, 0.0) > 0.5 { let n = (ex(31, 0.0) as usize).min(40); o.get(32..32 + n * 7).map(|s| s.to_vec()).unwrap_or_default() } else { vec![] } };
+            cam_keys: if ex(41, 0.0) > 0.5 { let n = (ex(42, 0.0) as usize).min(40); o.get(43..43 + n * 7).map(|s| s.to_vec()).unwrap_or_default() } else { vec![] } };
         let m = MosaicIn { cols: cols as usize, rows: rows as usize, ratio: tile_ratio as f64, cells, tile_rgb4, n_tiles };
         let plan = animation::make_plan(&m, &vp);
         let n = plan.n;
@@ -397,7 +403,10 @@ impl Renderer {
         self.scene = Some(Scene { plan, world_w, rows: rows as f32, tile_ratio, inst, ranges,
             opts: Opts { dur: o[1], dof: o[11] as f32, glow: o[12] as f32, n_particles: n_p, backdrop: o[14] > 0.5, gap: o[15] as f32,
                          bg: [o[16] as f32, o[17] as f32, o[18] as f32],
-                         ease: ex(27, 0.0) as f32, flash: ex(28, 1.0) as f32, hold: ex(29, 0.8).clamp(0.0, 0.95) as f32 } });
+                         ease: ex(27, 0.0) as f32, flash: ex(28, 1.0) as f32, hold: ex(29, 0.8).clamp(0.0, 0.95) as f32,
+                         mode: ex(30, 0.0).clamp(0.0, 2.0) as u32, bg2: [ex(31, 0.0) as f32, ex(32, 0.0) as f32, ex(33, 0.0) as f32],
+                         amount: ex(34, 1.0).clamp(0.0, 1.0) as f32, vignette: ex(35, 0.6).clamp(0.0, 1.0) as f32, lights: ex(36, 1.0).clamp(0.0, 2.0) as f32,
+                         accent: if ex(37, 0.0) > 0.5 { Some([ex(38, 0.6) as f32, ex(39, 0.5) as f32, ex(40, 1.0) as f32]) } else { None } } });
         Ok(heroes.into_iter().map(|h| h.1).collect())
     }
 
@@ -466,13 +475,21 @@ impl Renderer {
         let focus = ((target[0] - eye[0]).powi(2) + (target[1] - eye[1]).powi(2) + (target[2] - eye[2]).powi(2)).sqrt() as f32;
         let (ww, rows) = (sc.world_w, sc.rows);
         let bg = sc.opts.bg;
+        // colour tiles fade into and the frame clears to: the middle of the gradient, else the background colour
+        let b2 = sc.opts.bg2;
+        let bgf = if sc.opts.mode == 2 { [(bg[0] + b2[0]) * 0.5, (bg[1] + b2[1]) * 0.5, (bg[2] + b2[2]) * 0.5] } else { bg };
+        // glow, dust and backdrop lights: the user's colour, or the one taken from the photo
+        let (acc, acc2) = match sc.opts.accent {
+            Some(c) => (c, [c[0] * 0.7 + 0.3, c[1] * 0.7 + 0.3, c[2] * 0.7 + 0.3]),
+            None => (self.accent, self.accent2),
+        };
         let f4 = |a: [f64; 3], w: f32| [a[0] as f32, a[1] as f32, a[2] as f32, w];
         let q = &self.queue;
         let w = |b: &wgpu::Buffer, data: &[f32]| q.write_buffer(b, 0, bytemuck::cast_slice(data));
 
         // tiles
         let mut u = vp.to_vec();
-        u.extend_from_slice(&f4(eye, 0.0)); u.extend_from_slice(&f4(fwd, 0.0)); u.extend_from_slice(&[bg[0], bg[1], bg[2], 1.0]);
+        u.extend_from_slice(&f4(eye, 0.0)); u.extend_from_slice(&f4(fwd, 0.0)); u.extend_from_slice(&[bgf[0], bgf[1], bgf[2], 1.0]);
         u.extend_from_slice(&[t as f32, sc.opts.gap, sc.tile_ratio, focus]); u.extend_from_slice(&[sc.opts.dof, sc.opts.ease, sc.opts.flash, sc.opts.hold]);
         w(&self.u_tile, &u);
         // overlay + shine
@@ -482,21 +499,23 @@ impl Renderer {
         let shine = if shining { (-0.2 + 1.4 * (t - s0) / (s1 - s0)) as f32 } else { -5.0 };
         let mut u = vp.to_vec(); u.extend_from_slice(&[ww, rows, ramp, shine]); w(&self.u_over, &u);
         // backdrop
-        let amt = (0.15 + 0.85 * smooth(0.45 * d, 0.90 * d, t)) as f32;
-        let mut u = vec![bg[0], bg[1], bg[2], 1.0, self.accent[0], self.accent[1], self.accent[2], 1.0, self.accent2[0], self.accent2[1], self.accent2[2], 1.0];
+        let amt = if sc.opts.mode == 0 { (0.15 + 0.85 * smooth(0.45 * d, 0.90 * d, t)) as f32 } else { 1.0 };
+        let mut u = vec![bg[0], bg[1], bg[2], 1.0, acc[0], acc[1], acc[2], 1.0, acc2[0], acc2[1], acc2[2], 1.0];
         u.extend_from_slice(&[amt, target[0] as f32 / ww * 0.03, target[1] as f32 / rows * 0.03, t as f32]);
         u.extend_from_slice(&[self.config.width as f32, self.config.height as f32, 0.0, 0.0]);
+        u.extend_from_slice(&[b2[0], b2[1], b2[2], sc.opts.mode as f32]);
+        u.extend_from_slice(&[sc.opts.vignette, sc.opts.lights, sc.opts.amount, 0.0]);
         w(&self.u_back, &u);
         // glow: [0] shadow, [1] glow + rim
         let pad = 0.55 * ww.max(rows);
         let fade = smooth(0.66 * d, 0.88 * d, t) as f32;
         for mode in 0..2 {
             let mut u = vp.to_vec();
-            u.extend_from_slice(&[ww + pad, rows + pad, ww / 2.0, rows / 2.0, self.accent[0], self.accent[1], self.accent[2], sc.opts.glow, ww, mode as f32, fade, 0.0]);
+            u.extend_from_slice(&[ww + pad, rows + pad, ww / 2.0, rows / 2.0, acc[0], acc[1], acc[2], sc.opts.glow, ww, mode as f32, fade, 0.0]);
             w(&self.u_glow[mode], &u);
         }
         // particles
-        let pc = [0.55 * self.accent[0] + 0.45 * 1.0, 0.55 * self.accent[1] + 0.45 * 0.93, 0.55 * self.accent[2] + 0.45 * 0.82, 1.0];
+        let pc = [0.55 * acc[0] + 0.45 * 1.0, 0.55 * acc[1] + 0.45 * 0.93, 0.55 * acc[2] + 0.45 * 0.82, 1.0];
         let mut u = vp.to_vec();
         u.extend_from_slice(&f4(right, 0.0)); u.extend_from_slice(&f4(up, 0.0));
         u.extend_from_slice(&[t as f32, ww * 0.78, rows * 0.72, shine]);
@@ -515,12 +534,12 @@ impl Renderer {
             let mut pass = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("frame"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment { view: view_c, depth_slice: None, resolve_target: resolve,
-                    ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color { r: bg[0] as f64, g: bg[1] as f64, b: bg[2] as f64, a: 1.0 }),
+                    ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color { r: bgf[0] as f64, g: bgf[1] as f64, b: bgf[2] as f64, a: 1.0 }),
                                             store: wgpu::StoreOp::Store } })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment { view: &self.depth,
                     depth_ops: Some(wgpu::Operations { load: wgpu::LoadOp::Clear(1.0), store: wgpu::StoreOp::Discard }), stencil_ops: None }),
                 timestamp_writes: None, occlusion_query_set: None, multiview_mask: None });
-            if sc.opts.backdrop { if let Some(bg_group) = &self.back_group {
+            if sc.opts.backdrop || sc.opts.mode != 0 { if let Some(bg_group) = &self.back_group {
                 pass.set_pipeline(&self.p_back); pass.set_bind_group(0, &self.g_back, &[]); pass.set_bind_group(1, bg_group, &[]); pass.draw(0..4, 0..1);
             } }
             if sc.opts.glow > 0.0 && fade > 0.0 {

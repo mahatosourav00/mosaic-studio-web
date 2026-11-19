@@ -2,7 +2,7 @@
 import { app, go, mount, persist, resetButton } from "./app.js";
 import { h, $, card, title, row, toggle, slider, seg, select, color, group, toast, syncAll, helpButton } from "./ui.js";
 import { cameraEditor, cameraKeys, randomCameraKeys, CAMERAS } from "./camera-editor.js";
-import { STYLES, VIDEO_SHAPES, VIDEO_LOOKS, LOOK_KEYS, TILE_KEYS, TILE_PRESETS, RANGES, ENTRY, ORDER, EASE, defaults } from "./settings.js";
+import { STYLES, VIDEO_SHAPES, VIDEO_LOOKS, LOOK_KEYS, TILE_KEYS, TILE_PRESETS, BG_KEYS, BG_PRESETS, RANGES, ENTRY, ORDER, EASE, defaults } from "./settings.js";
 import { createPlayer, exportMp4, exportWebm } from "./video.js";
 
 let player = null, playing = null;
@@ -25,6 +25,9 @@ export async function videoPage() {
   const styles = h("div", { class: "grid styles" });
   const looks = h("div", { class: "grid styles" });
   const tileRow = h("div", { class: "row" });
+  const bgRow = h("div", { class: "row" });
+  let bgSecond, bgAmount, accentPick;
+  const bgVis = () => { bgSecond.style.display = st.bg_mode === "gradient" ? "" : "none"; bgAmount.style.display = st.bg_mode === "photo" ? "" : "none"; accentPick.style.display = st.accent_mode === "custom" ? "" : "none"; };
   const camEl = cameraEditor(st, (done) => { persist(); done && later(); }, null);
   const helped = (text, key) => { const t = title(text); t.querySelector("h2").append(" ", helpButton(key)); return t; };
   const myLooks = h("div", {});
@@ -38,8 +41,17 @@ export async function videoPage() {
   const later = () => { clearTimeout(timer); timer = setTimeout(apply, 250); };
   const change = () => { persist(); later(); };
 
+  // The preview stays on screen while you scroll through the settings (can be switched off).
+  const PIN = "mosaic-studio-pin-preview";
+  let pinned = true; try { pinned = localStorage.getItem(PIN) !== "0"; } catch {}
+  const pinBtn = h("button", { class: "btn", type: "button" });
+  const previewCard = card(cv, info, h("div", { class: "row" }, playBtn, restart, pinBtn));
+  const paintPin = () => { previewCard.classList.toggle("sticky-preview", pinned); pinBtn.textContent = pinned ? "📌 Preview pinned" : "📌 Pin preview"; pinBtn.classList.toggle("on", pinned); pinBtn.title = pinned ? "The preview follows you as you scroll. Tap to unpin." : "Keep the preview on screen while you scroll."; };
+  pinBtn.onclick = () => { pinned = !pinned; try { localStorage.setItem(PIN, pinned ? "1" : "0"); } catch {} paintPin(); };
+  const fitTop = () => { const t = document.querySelector("header.top"); previewCard.style.setProperty("--topH", (t ? t.offsetHeight : 56) + "px"); };
+  addEventListener("resize", fitTop); paintPin(); fitTop();
   const content = h("div", { class: "page" },
-    card(cv, info, h("div", { class: "row" }, playBtn, restart)),
+    previewCard,
     card(helped("Style", "style"), h("p", { class: "hint" }, "Pick the basic choreography. The options below change how it plays."), styles),
     card(helped("Looks", "looks"), h("p", { class: "hint" }, "A Look is a ready-made bundle of settings. Tap one to load it, then fine-tune below. Not sure? Try Surprise me."), looks,
       myLooks, h("div", { class: "row" }, saveLook)),
@@ -55,8 +67,7 @@ export async function videoPage() {
       slider(st, "glow", { label: "Glow and shadow", help: "glow", min: 0, max: 1, step: 0.05, fmt: (v) => Math.round(v * 100) + "%", onChange: (v, d) => { persist(); d && later(); } }),
       slider(st, "particles", { label: "Floating dust", help: "particles", min: 0, max: 500, step: 10, onChange: (v, d) => { persist(); d && later(); } }),
       slider(st, "pulses", { label: "Arrival waves", help: "pulses", min: 0, max: 8, step: 1, onChange: (v, d) => { persist(); d && later(); } }),
-      toggle(st, "backdrop", { label: "Blurred backdrop", help: "backdrop", onChange: change }),
-    ], { sub: "9 options" }),
+    ], { sub: "8 options" }),
     group("Look and motion", [
       slider(st, "hero_size", { label: "Showcase photo size", help: "hero_size", min: 0.2, max: 0.6, step: 0.02, fmt: (v) => Math.round(v * 100) + "%", onChange: (v, d) => { persist(); d && later(); } }),
       slider(st, "flight_scale", { label: "How far tiles fly in from", help: "flight_scale", min: 1, max: 3, step: 0.1, fmt: (v) => v.toFixed(1) + "x", onChange: (v, d) => { persist(); d && later(); } }),
@@ -67,10 +78,20 @@ export async function videoPage() {
       slider(st, "camera_motion", { label: "Camera sway", help: "camera_motion", min: 0, max: 2, step: 0.1, fmt: (v) => Math.round(v * 100) + "%", onChange: (v, d) => { persist(); d && later(); } }),
       slider(st, "frame_margin", { label: "Camera framing (higher is closer)", help: "frame_margin", min: 0.5, max: 1, step: 0.02, fmt: (v) => Math.round(v * 100) + "%", onChange: (v, d) => { persist(); d && later(); } }),
       slider(st, "reveal_time", { label: "Final picture appears at", help: "reveal_time", min: 0.6, max: 0.8, step: 0.02, fmt: (v) => Math.round(v * 100) + "%", onChange: (v, d) => { persist(); d && later(); } }),
-      color(st, "bg_color", { label: "Background colour", help: "bg_color", onChange: change }),
       h("div", { class: "row" }, h("button", { class: "btn", type: "button", onclick: () => { st.anim_seed = 1 + Math.floor(Math.random() * 9999); change(); toast("Shuffled the tile order and paths."); } }, "Shuffle the animation")),
-    ], { sub: "11 options" }),
-    card(helped("Camera", "camera"), camEl),
+    ], { sub: "10 options" }),
+    group("Background", [
+      h("div", { class: "opt" }, h("div", { class: "opt-top" }, h("label", {}, "Quick presets"), helpButton("bg_presets")), bgRow),
+      seg(st, "bg_mode", [["photo", "Photo glow"], ["solid", "Solid colour"], ["gradient", "Gradient"]], { label: "Background type", help: "bg_mode", onChange: () => { bgVis(); change(); } }),
+      color(st, "bg_color", { label: "Colour", help: "bg_color", onChange: change }),
+      bgSecond = color(st, "bg_color2", { label: "Second colour (bottom)", help: "bg_color2", onChange: change }),
+      bgAmount = slider(st, "bg_amount", { label: "Photo strength", help: "bg_amount", min: 0, max: 1, step: 0.05, fmt: (v) => Math.round(v * 100) + "%", onChange: (v, d) => { persist(); d && later(); } }),
+      slider(st, "bg_vignette", { label: "Edge darkening", help: "bg_vignette", min: 0, max: 1, step: 0.05, fmt: (v) => Math.round(v * 100) + "%", onChange: (v, d) => { persist(); d && later(); } }),
+      slider(st, "bg_lights", { label: "Colour lights", help: "bg_lights", min: 0, max: 2, step: 0.1, fmt: (v) => Math.round(v * 100) + "%", onChange: (v, d) => { persist(); d && later(); } }),
+      seg(st, "accent_mode", [["photo", "Match photo"], ["custom", "My colour"]], { label: "Glow and dust colour", help: "accent_mode", onChange: () => { bgVis(); change(); } }),
+      accentPick = color(st, "accent_color", { label: "My glow colour", help: "accent_color", onChange: change }),
+    ], { sub: "type, colours, lights", help: "background" }),
+    group("Camera", [camEl], { sub: "moves and keyframes", help: "camera" }),
     group("Tile motion and build", [
       h("div", { class: "opt" }, h("div", { class: "opt-top" }, h("label", {}, "Quick presets"), helpButton("tile_presets")), tileRow),
       select(st, "entry", ENTRY, { label: "Tiles fly in from", help: "entry", onChange: change }),
@@ -85,6 +106,7 @@ export async function videoPage() {
     h("div", { class: "row" }, resetButton(videoPage)));
 
   mount(videoPage, { title: "Design video", step: "video", content, back: "create", next: "home", nextLabel: "Finish" });
+  fitTop();
 
   Object.entries(STYLES).forEach(([k, [name, text]]) => {
     const b = h("button", { class: "style" + (st.style === k ? " on" : ""), type: "button", onclick: () => {
@@ -178,8 +200,26 @@ export async function videoPage() {
     applyKeys(v); toast("Random tile motion.");
   } }, "🎲 Surprise"));
 
+  // background presets: Default, moods, Surprise
+  const bgBtns = [];
+  const bgSet = (v) => { const d = defaults(); const out = {}; BG_KEYS.forEach((k) => { out[k] = clone(d[k]); }); return Object.assign(out, clone(v)); };
+  const hsl = (h2, s2, l2) => { const f = (n) => { const k = (n + h2 / 30) % 12, a = s2 * Math.min(l2, 1 - l2); return Math.round(255 * (l2 - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))); }; return [f(0), f(8), f(4)]; };
+  [["Default", bgSet({})], ...Object.values(BG_PRESETS).map((p) => [p.icon + " " + p.label, bgSet(p.v)])].forEach(([label, v]) => {
+    const b = h("button", { class: "btn", type: "button", onclick: () => applyKeys(v) }, label); bgBtns.push({ b, v }); bgRow.append(b);
+  });
+  bgRow.append(h("button", { class: "btn", type: "button", onclick: () => {
+    const hue = Math.floor(Math.random() * 360), light = Math.random() < 0.15;
+    const v = bgSet(light ? { bg_mode: "solid", bg_color: hsl(hue, 0.35, 0.92), bg_lights: 0, bg_vignette: 0.15, accent_mode: "custom", accent_color: hsl(hue, 0.5, 0.45) }
+      : pick(["gradient", "gradient", "solid", "photo"]) === "photo" ? { bg_mode: "photo", bg_color: hsl(hue, 0.5, 0.06), bg_vignette: 0.5 + Math.random() * 0.4, bg_lights: 0.8 + Math.random() }
+      : { bg_mode: "gradient", bg_color: hsl(hue, 0.55, 0.16), bg_color2: hsl((hue + 25 + Math.random() * 40) % 360, 0.5, 0.06 + Math.random() * 0.14), bg_lights: 0.8 + Math.random() * 0.6,
+          accent_mode: "custom", accent_color: hsl((hue + 20) % 360, 0.8, 0.7) });
+    applyKeys(v); toast("Random background.");
+  } }, "🎲 Surprise"));
+
   function paintAll() {
     lookCards.forEach(({ el, v }) => el.classList.toggle("on", matches(v)));
+    bgBtns.forEach(({ b, v }) => b.classList.toggle("on", BG_KEYS.every((k) => JSON.stringify(st[k]) === JSON.stringify(v[k]))));
+    bgVis();
     tileBtns.forEach(({ b, v }) => b.classList.toggle("on", TILE_KEYS.every((k) => JSON.stringify(st[k]) === JSON.stringify(v[k]))));
   }
   content.addEventListener("input", paintAll); content.addEventListener("change", paintAll); content.addEventListener("click", () => setTimeout(paintAll, 0));

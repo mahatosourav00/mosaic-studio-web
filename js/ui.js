@@ -59,8 +59,10 @@ export function row({ label, help, value, hint, inline }, ...controls) {
 export function banner(tone, text) { return h("div", { class: `banner ${tone}` }, h("span", { class: "dot" }), h("span", {}, text)); }
 
 /** Collapsible group; `open` keeps it expanded. */
-export function group(label, kids, { open = false, sub } = {}) {
-  const d = h("details", { class: "group" }, h("summary", {}, h("span", {}, label), sub ? h("small", {}, sub) : null), h("div", { class: "group-body" }, kids));
+export function group(label, kids, { open = false, sub, help } = {}) {
+  const hb = help ? helpButton(help) : null;
+  if (hb) { hb.addEventListener("click", (e) => e.stopPropagation()); hb.addEventListener("click", (e) => e.preventDefault()); }   // opening the guide must not fold the section
+  const d = h("details", { class: "group" }, h("summary", {}, h("span", {}, label), hb, sub ? h("small", {}, sub) : null), h("div", { class: "group-body" }, kids));
   if (open) d.open = true;
   return d;
 }
