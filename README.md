@@ -42,27 +42,17 @@ This is the web version of the Windows app, [Mosaic Studio](https://github.com/m
 
 ### It assembles itself
 
-The same mosaic as an animation, in two of the four styles: **Swarm** (left) and **Vortex** (right). These GIFs are small
-previews. The app saves a smooth, full-resolution **MP4**.
+Thousands of tiny photos fly in and snap into place. This is Vermeer's *Girl with a Pearl Earring*, built from about 1,200
+NASA photos. The GIF is a small preview; the app saves a smooth, full-resolution **MP4**. Pick from four animation styles
+(see below).
 
 <p align="center">
-  <img src="docs/images/anim-swarm.gif" alt="Swarm style: tiles swoop in from all sides to form a picture of Earth" width="40%">
-  <img src="docs/images/anim-vortex.gif" alt="Vortex style: tiles spiral in to form a picture of Earth" width="40%">
+  <img src="docs/images/anim-portrait.gif" alt="Animation: tiles swirl in and assemble into Girl with a Pearl Earring" width="34%">
+  &nbsp;&nbsp;
+  <img src="docs/images/sample-portrait.jpg" alt="Finished mosaic of Girl with a Pearl Earring" width="44%">
 </p>
 
-### One picture, different settings
-
-All made from the same 119 public-domain NASA photos and NASA's *Blue Marble*. Only the settings differ.
-
-<p align="center">
-  <img src="docs/images/sample-earth-source.jpg" alt="Main picture" width="23%">
-  <img src="docs/images/sample-earth.jpg" alt="Balanced: 1,500 tiles" width="23%">
-  <img src="docs/images/sample-earth-fine.jpg" alt="Fine detail: 4,000 tiles" width="23%">
-  <img src="docs/images/sample-earth-bw.jpg" alt="Black and white: 2,500 tiles" width="23%">
-</p>
-<p align="center"><sub>Main picture · Balanced (1,500 tiles) · Fine detail (4,000 tiles) · Black and white (2,500 tiles)</sub></p>
-
-More photos (300+) always gives a richer, less repetitive mosaic.
+The more photos you use, the richer and less repetitive the mosaic. Aim for 300 or more.
 
 ---
 
@@ -150,5 +140,5 @@ Developed by **Sourav**. MIT licensed, see [LICENSE](LICENSE); bundled third-par
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 <sub>Sample tiles: the [NASA Image and Video Library](https://images.nasa.gov/) (NASA media is generally not copyrighted).
-Main pictures: NASA's *Blue Marble* and Johannes Vermeer's *Girl with a Pearl Earring* (public domain). The pictures above
-are scaled-down copies; the app can produce much larger files.</sub>
+Main picture: Johannes Vermeer's *Girl with a Pearl Earring* (public domain). The pictures above are scaled-down copies;
+the app can produce much larger files.</sub>
