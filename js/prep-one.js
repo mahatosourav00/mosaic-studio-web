@@ -104,6 +104,7 @@ export async function processPhoto(core, file, cfg) {
   const out = { status: "ok", reason: "", trimmed: false, thumb: null };
   const T0 = performance.now(); let T = T0; const tm = {}; const lap = (k) => { const n = performance.now(); tm[k] = n - T; T = n; };
   out.tm = tm;
+  if (cfg.split) { file = new Blob([await file.arrayBuffer()], { type: file.type }); lap("read"); }   // ?debug&split: time reading the file apart from decoding it
   const dec = await decodeForPrep(file, cfg.small); lap("decode");
   if (!dec) { out.status = "rejected"; out.reason = "could not be read"; return out; }
   const { bmp } = dec, sc = dec.origW / bmp.width;            // bitmap pixels -> original pixels

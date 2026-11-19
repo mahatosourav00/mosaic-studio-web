@@ -1,6 +1,7 @@
 // Photo preparation: decode -> trim borders -> filter blurry/tiny -> smart crop -> tile -> remove duplicates.
 // The heavy maths lives in Rust (prep_* functions); this file feeds it and keeps the report.
 import { loadCore } from "./engine.js";
+import { DEBUG, mark, showDebug } from "./dbg.js";
 import { tileRatio } from "./settings.js";
 
 import { isPhone } from "./settings.js";
@@ -16,7 +17,7 @@ const poolSize = (count) => {
   const want = Number(param("workers")) || (isPhone() ? (smallDecode() ? 5 : 3) : 4);
   return Math.max(1, Math.min(want, (navigator.hardwareConcurrency || 4) - 1, count));
 };
-const DEBUG =/[?&]debug(&|=|$)/.test(location.search);
+const boots = [];          // ?debug: how long each worker took to load the wasm
 
 /** ?debug only: show where the "Reading your photos" time goes (summed over all photos, so it can exceed the wall time). */
 function debugReport(files, results, wall) {
@@ -26,11 +27,9 @@ function debugReport(files, results, wall) {
   const lines = [`Reading photos: ${files.length} files in ${f(wall)} (${f(wall / files.length)}/photo)`,
     `avg size ${(mp / Math.max(1, n)).toFixed(1)} MP, ${n} read, ${failed} failed`,
     `cores ${navigator.hardwareConcurrency}, memory ${navigator.deviceMemory ?? "?"} GB, phone mode ${isPhone()}, workers ${poolSize(files.length)}, small decode ${smallDecode()}`,
-    "per photo average: " + Object.entries(sum).map(([k, v]) => `${k} ${f(v / Math.max(1, n))}`).join(", ")];
-  console.log(lines.join("\n"));
-  let box = document.getElementById("debug-timing");
-  if (!box) { box = document.createElement("pre"); box.id = "debug-timing"; box.style.cssText = "position:fixed;left:4px;right:4px;bottom:4px;z-index:99999;margin:0;padding:8px;background:#000c;color:#9f9;font:11px/1.4 monospace;white-space:pre-wrap;border-radius:6px"; box.onclick = () => box.remove(); document.body.append(box); }
-  box.textContent = lines.join("\n") + "\n(tap to close)";
+    "per photo average: " + Object.entries(sum).map(([k, v]) => `${k} ${f(v / Math.max(1, n))}`).join(", "),
+    `worker start-up (wasm load): ${boots.map(f).join(", ") || "n/a"}`];
+  showDebug("prep", lines);
 }
 
 /** Effective preparation switches (the master "skip" switch turns everything off). */
@@ -70,10 +69,13 @@ async function processAll(core, files, cfg, { onProgress, signal }) {
           const id = next++; w.currentId = id;
           w.postMessage({ id, file: files[id], cfg });
         };
+        mark("starting workers");
         for (let k = 0; k < n; k++) {
           const w = new Worker(new URL("./prep-worker.js", import.meta.url), { type: "module" });
           workers.push(w); active++;
           w.onmessage = ({ data }) => {
+            if (data.boot != null) boots.push(data.boot);
+            if (!done) mark("first photo done");
             results[data.id] = data.error ? { status: "rejected", reason: "could not be read", trimmed: false, thumb: null } : data.r;
             done++; report(); feed(w);
           };
@@ -105,7 +107,7 @@ export async function preparePhotos(files, s, { onProgress, signal, thumbs = fal
   const core = await loadCore();
   const flags = prepFlags(s);
   const ratio = tileRatio(s), tw = Math.round(TILE_H * ratio), th = TILE_H;
-  const cfg = { flags, ratio, tw, th, minSide: s.min_side, minSharp: s.min_sharpness, grayscale: s.grayscale, faces: s.detect_faces, thumbs, small: smallDecode() };
+  const cfg = { flags, ratio, tw, th, minSide: s.min_side, minSharp: s.min_sharpness, grayscale: s.grayscale, faces: s.detect_faces, thumbs, small: smallDecode(), split: DEBUG && param("split") !== null };
   const t0 = performance.now();
   const results = await processAll(core, files, cfg, { onProgress, signal });
   if (DEBUG) debugReport(files, results, performance.now() - t0);

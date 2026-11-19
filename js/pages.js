@@ -3,6 +3,7 @@ import { app, go, mount, persist, steps, resetSettings, resetButton } from "./ap
 import { h, $, card, title, row, toggle, slider, seg, select, color, number, banner, group, sheet, syncAll, toast } from "./ui.js";
 import { PRESETS, SHAPES, TILE_SHAPES, EXACT_SIZES, defaults, stillPlan, repeatAdvice, maxStillPixels, isPhone, toFile, fromText } from "./settings.js";
 import { buildMosaic, getPrepared } from "./mosaic.js";
+import { mark } from "./dbg.js";
 
 const s = () => app.settings;
 const pct = (v) => Math.round(v * 100) + "%";
@@ -257,7 +258,9 @@ export function create() {
   go1.onclick = async () => {
     ctl = new AbortController();
     go1.disabled = true; cancel.hidden = false; prog.hidden = false; res.replaceChildren();
+    mark("button pressed", true);
     let wake = null; try { wake = await navigator.wakeLock?.request("screen"); } catch {}
+    mark("screen lock done");
     try {
       const r = await buildMosaic({ photos: app.photos, main: app.main, settings: st, signal: ctl.signal, onStage: (n, f) => { stage.textContent = n; prog.value = f; } });
       if (app.result) URL.revokeObjectURL(app.result.url);

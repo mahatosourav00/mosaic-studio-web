@@ -3,6 +3,7 @@ import { loadCore } from "./engine.js";
 import { tileRatio, stillPlan } from "./settings.js";
 import { preparePhotos, prepKey, decode, detectFaces } from "./prep.js";
 import { withDpi } from "./dpi.js";
+import { mark, showDebug, timeline } from "./dbg.js";
 
 export { decode };
 const ANALYSIS_PX = 24;
@@ -128,16 +129,20 @@ async function solveAndRender(core, j, onStage, signal) {
  * Returns {blob, width, height, dpi, capped, stats, scene (not for previews), ...}.
  */
 export async function buildMosaic({ photos, main, settings, onStage, signal, preview = false }) {
+  mark("build started");
   const core = await loadCore();
+  mark("wasm ready");
   const s = preview ? { ...settings, output_mode: "screen", cell_px: 24 } : settings;
   onStage?.(`Reading your photos (0/${photos.length})`, 0);
   const total = photos.length;
   const prep = await getPrepared(photos, s, { onProgress: (f) => onStage?.(`Reading your photos (${Math.round(f * total)}/${total})`, f), signal });
   if (prep.count < 4) throw new Error(`Only ${prep.count} usable photos were found (${prep.skipped} left out). Pick at least 4, or loosen the photo preparation options.`);
   await tick();
+  mark("photos read");
   onStage?.("Reading the main picture", 0);
   const m = await prepareMain(main, s);
   await tick();
+  mark("main picture read");
 
   // [num_tiles, subtiles, subtile%, grid, detail, subject_w, max_uses, min_dist, flip, even, tint, seed]
   const opts = new Float64Array([m.cols * m.rows, s.use_subtiles ? 1 : 0, s.subtile_percent, s.subtile_grid,
@@ -150,6 +155,7 @@ export async function buildMosaic({ photos, main, settings, onStage, signal, pre
   const job = { rgb: m.rgb, cols: m.cols, rows: m.rows, subject: m.subject, patches: prep.patches, opts, tiles: prep.tiles, tw: prep.tw, th: prep.th,
                 ratio: r, cellH: plan.cellH, gap: s.gap_px, gapColor: new Uint8Array(s.gap_color), tint: s.tint > 0 };
   const { out, rgba } = await solveAndRender(core, job, onStage, signal);
+  mark("matched and drawn");
   const stats = { violations: out[0], raised: !!out[1], swaps: out[2], minUsed: out[3], maxUsed: out[4], unused: out[5] };
   const cells = out.subarray(6);
   onStage?.("Painting the mosaic", 0.6);
@@ -163,6 +169,7 @@ export async function buildMosaic({ photos, main, settings, onStage, signal, pre
   let blob = cv.convertToBlob ? await cv.convertToBlob({ type, quality: s.image_quality / 100 }) : await new Promise((res) => cv.toBlob(res, type, s.image_quality / 100));
   if (!preview) blob = await withDpi(blob, plan.dpi);
   onStage?.("Done", 1);
+  mark("done"); showDebug("timeline", [timeline()]);
   const res = { blob, width: W, height: H, dpi: plan.dpi, capped: plan.capped, cols: m.cols, rows: m.rows, photos: prep.count, skipped: prep.skipped,
                 cellH: plan.cellH, stats, counts: prep.counts };
   if (!preview) res.scene = { cells: Float32Array.from(cells), cols: m.cols, rows: m.rows, tileRatio: r, prep, crop: m.crop, files: photos };
