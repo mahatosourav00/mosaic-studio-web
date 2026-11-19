@@ -148,8 +148,6 @@ On Windows without Visual Studio Build Tools, `build.ps1` uses the GNU host tool
 
 - **GitHub Pages:** `.github/workflows/pages.yml` runs the tests, builds the WebAssembly in CI and publishes on every push
   to `main`.
-- **Netlify:** `netlify.toml` runs `netlify-build.sh`, which installs the stable Rust toolchain, builds the core and
-  assembles a `site/` folder to publish.
 
 ### Notes learned so far
 
