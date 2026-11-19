@@ -56,13 +56,16 @@ async function makeThumb(src) {
 export async function processPhoto(core, file, cfg) {
   const { flags, ratio, tw, th } = cfg;
   const out = { status: "ok", reason: "", trimmed: false, thumb: null };
-  const bmp = await decode(file);
+  const T0 = performance.now(); let T = T0; const tm = {}; const lap = (k) => { const n = performance.now(); tm[k] = n - T; T = n; };
+  out.tm = tm;
+  const bmp = await decode(file); lap("decode");
   if (!bmp) { out.status = "rejected"; out.reason = "could not be read"; return out; }
   const k = Math.min(1, WORK / Math.max(bmp.width, bmp.height));
   const ww = Math.max(1, Math.round(bmp.width * k)), wh = Math.max(1, Math.round(bmp.height * k));
   const wcv = makeCanvas(ww, wh), wctx = wcv.getContext("2d", { willReadFrequently: true });
   wctx.imageSmoothingQuality = "high"; wctx.drawImage(bmp, 0, 0, ww, wh);
-  const work = wctx.getImageData(0, 0, ww, wh).data;
+  const work = wctx.getImageData(0, 0, ww, wh).data; lap("resize");
+  out.mp = bmp.width * bmp.height / 1e6;
   // 1) borders
   const [t, b, l, r] = flags.trim ? Array.from(core.prep_trim_borders(work, ww, wh)) : [0, 0, 0, 0];
   out.trimmed = t + b + l + r > 0;
@@ -70,7 +73,8 @@ export async function processPhoto(core, file, cfg) {
   const body = out.trimmed ? subRect(work, ww, l, t, cw, ch) : work;
   // 2) filters (size is judged on the original, after trimming)
   const origW = bmp.width - Math.round((l + r) / k), origH = bmp.height - Math.round((t + b) / k);
-  const sharp = core.prep_sharpness(body, cw, ch);
+  lap("trim");
+  const sharp = core.prep_sharpness(body, cw, ch); lap("sharpness");
   if (flags.filter && Math.min(origW, origH) < cfg.minSide) { out.status = "rejected"; out.reason = `too small (${origW}x${origH})`; }
   else if (flags.filter && sharp < cfg.minSharp) { out.status = "rejected"; out.reason = `too blurry (${sharp.toFixed(1)})`; }
   else if (Math.min(origW, origH) < 8) { out.status = "rejected"; out.reason = "too small"; }
@@ -87,6 +91,7 @@ export async function processPhoto(core, file, cfg) {
     if (sr > ratio) cwid = Math.round(ch * ratio); else chei = Math.round(cw / ratio);
     crop = [Math.round((cw - cwid) / 2), Math.round((ch - chei) / 2), cwid, chei];
   }
+  lap("crop");
   // map the crop back to full-resolution pixels and draw the tile from the original
   const f = 1 / k, { cv: tcv, ctx: tctx } = tileCtx(tw, th);
   tctx.clearRect(0, 0, tw, th); tctx.imageSmoothingQuality = "high";
@@ -97,7 +102,7 @@ export async function processPhoto(core, file, cfg) {
   if (cfg.thumbs) out.thumb = await makeThumb(tcv);
   out.sharp = sharp;
   out.patch = patch4(out.tile, tw, th);
-  out.hash = flags.dedupe ? Array.from(core.prep_hash(out.tile, tw, th)) : null;
+  out.hash = flags.dedupe ? Array.from(core.prep_hash(out.tile, tw, th)) : null; lap("tile");
   bmp.close?.();
   return out;
 }

@@ -8,6 +8,22 @@ import { processPhoto, decode, detectFaces } from "./prep-one.js";
 export { decode, detectFaces };
 
 const TILE_H = 128;        // stored tile height
+const DEBUG = /[?&]debug(&|=|$)/.test(location.search);
+
+/** ?debug only: show where the "Reading your photos" time goes (summed over all photos, so it can exceed the wall time). */
+function debugReport(files, results, wall) {
+  const sum = {}; let mp = 0, n = 0, failed = 0;
+  for (const r of results) { if (!r?.tm) { failed++; continue; } n++; mp += r.mp || 0; for (const k in r.tm) sum[k] = (sum[k] || 0) + r.tm[k]; }
+  const f = (v) => Math.round(v) + " ms";
+  const lines = [`Reading photos: ${files.length} files in ${f(wall)} (${f(wall / files.length)}/photo)`,
+    `avg size ${(mp / Math.max(1, n)).toFixed(1)} MP, ${n} read, ${failed} failed`,
+    `cores ${navigator.hardwareConcurrency}, memory ${navigator.deviceMemory ?? "?"} GB, phone mode ${isPhone()}, workers ${Math.max(1, Math.min(isPhone() ? 3 : 4, (navigator.hardwareConcurrency || 4) - 1, files.length))}`,
+    "per photo average: " + Object.entries(sum).map(([k, v]) => `${k} ${f(v / Math.max(1, n))}`).join(", ")];
+  console.log(lines.join("\n"));
+  let box = document.getElementById("debug-timing");
+  if (!box) { box = document.createElement("pre"); box.id = "debug-timing"; box.style.cssText = "position:fixed;left:4px;right:4px;bottom:4px;z-index:99999;margin:0;padding:8px;background:#000c;color:#9f9;font:11px/1.4 monospace;white-space:pre-wrap;border-radius:6px"; box.onclick = () => box.remove(); document.body.append(box); }
+  box.textContent = lines.join("\n") + "\n(tap to close)";
+}
 
 /** Effective preparation switches (the master "skip" switch turns everything off). */
 export function prepFlags(s) {
@@ -82,7 +98,9 @@ export async function preparePhotos(files, s, { onProgress, signal, thumbs = fal
   const flags = prepFlags(s);
   const ratio = tileRatio(s), tw = Math.round(TILE_H * ratio), th = TILE_H;
   const cfg = { flags, ratio, tw, th, minSide: s.min_side, minSharp: s.min_sharpness, grayscale: s.grayscale, faces: s.detect_faces, thumbs };
+  const t0 = performance.now();
   const results = await processAll(core, files, cfg, { onProgress, signal });
+  if (DEBUG) debugReport(files, results, performance.now() - t0);
   const cand = [];     // kept so far (before duplicate removal)
   const records = files.map((file, i) => {
     const r = results[i];
