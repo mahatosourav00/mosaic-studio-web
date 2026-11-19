@@ -3,9 +3,9 @@
 ### Turn a pile of photos into one big picture made of tiny photos, then watch it build itself.
 
 <p align="center">
-  <img src="docs/images/anim-portrait.gif" alt="Thousands of tiny photos fly in and assemble into a portrait" width="34%">
+  <img src="docs/images/anim-vermeer-swarm.gif" alt="Thousands of tiny photos fly in and assemble into Girl with a Pearl Earring" width="34%">
   &nbsp;&nbsp;
-  <img src="docs/images/sample-portrait.jpg" alt="The finished mosaic: Girl with a Pearl Earring, built from NASA photos" width="44%">
+  <img src="docs/images/sample-vermeer-fine.jpg" alt="The finished mosaic: Girl with a Pearl Earring, built from NASA photos" width="44%">
 </p>
 
 <p align="center">
@@ -40,19 +40,40 @@ This is the web version of the Windows app, [Mosaic Studio](https://github.com/m
 
 ## What you can make
 
-### It assembles itself
+All the pictures below are made in the app from the same **1,285 public-domain NASA photos** and Vermeer's
+*Girl with a Pearl Earring*. Only the settings differ.
 
-Thousands of tiny photos fly in and snap into place. This is Vermeer's *Girl with a Pearl Earring*, built from about 1,200
-NASA photos. The GIF is a small preview; the app saves a smooth, full-resolution **MP4**. Pick from four animation styles
-(see below).
+### One picture, different settings
 
 <p align="center">
-  <img src="docs/images/anim-portrait.gif" alt="Animation: tiles swirl in and assemble into Girl with a Pearl Earring" width="34%">
-  &nbsp;&nbsp;
-  <img src="docs/images/sample-portrait.jpg" alt="Finished mosaic of Girl with a Pearl Earring" width="44%">
+  <img src="docs/images/sample-vermeer-source.jpg" alt="The main picture" width="23%">
+  <img src="docs/images/sample-vermeer-balanced.jpg" alt="Balanced: 1,500 tiles" width="23%">
+  <img src="docs/images/sample-vermeer-fine.jpg" alt="Best quality with extra fine detail: about 3,000 tiles plus small tiles" width="23%">
+  <img src="docs/images/sample-vermeer-bw.jpg" alt="Black and white" width="23%">
 </p>
 
-The more photos you use, the richer and less repetitive the mosaic. Aim for 300 or more.
+| | Main picture | Balanced | Best quality + extra fine detail | Black and white |
+|---|---|---|---|---|
+| **Settings** | The painting you choose | Quality preset: *Balanced* | *Best quality*, with **Extra fine detail (small tiles)** on | *Best quality* with **Black and white** on |
+| **Tiles** | | 36 x 42 (1,500) | 51 x 59 (about 3,000) plus small tiles | 51 x 59 (about 3,000) |
+| **Output** | | 2304 x 2688 px | 4896 x 5664 px | 4896 x 5664 px |
+
+*Balanced* is quick and the individual photos are easy to see. *Best quality* with *extra fine detail* uses far more, smaller
+tiles, so the face, the turban and the pearl come through clearly. *Black and white* converts every tile, so the picture is
+built from light and shade alone. More photos (300+) always gives a richer, less repetitive mosaic.
+
+### It assembles itself, in four styles
+
+The same mosaic as an animation. Each style has its own motion and camera. These GIFs are small previews; the app saves a
+smooth, full-resolution **MP4**.
+
+<p align="center">
+  <img src="docs/images/anim-vermeer-swarm.gif" alt="Swarm style" width="23%">
+  <img src="docs/images/anim-vermeer-vortex.gif" alt="Vortex style" width="23%">
+  <img src="docs/images/anim-vermeer-wave.gif" alt="Wave style" width="23%">
+  <img src="docs/images/anim-vermeer-zoom.gif" alt="Zoom style" width="23%">
+</p>
+<p align="center"><sub><b>Swarm</b> · <b>Vortex</b> · <b>Wave</b> · <b>Zoom</b></sub></p>
 
 ---
 
