@@ -3,7 +3,7 @@
 ### Turn a pile of photos into one big picture made of tiny photos, then watch it build itself.
 
 <p align="center">
-  <img src="docs/images/anim-vermeer-swarm.gif" alt="Thousands of tiny photos fly in and assemble into Girl with a Pearl Earring" width="34%">
+  <img src="docs/images/anim-vermeer-fireworks.gif" alt="Thousands of tiny photos fly in and assemble into Girl with a Pearl Earring" width="34%">
   &nbsp;&nbsp;
   <img src="docs/images/sample-vermeer-fine.jpg" alt="The finished mosaic: Girl with a Pearl Earring, built from NASA photos" width="44%">
 </p>
@@ -64,14 +64,15 @@ built from light and shade alone. More photos (300+) always gives a richer, less
 
 ### It assembles itself
 
-The same mosaic as an animation, in two of the four styles: **Swarm** (left) and **Vortex** (right). Each style has its own
-motion and camera. These GIFs are small previews; the app saves a smooth, full-resolution **MP4**. *Wave* and *Zoom* are
-described [below](#design-your-video).
+The same mosaic as an animation, made with two different **Looks** (ready-made bundles of settings). On the left,
+**Falling tiles**: big showcase photos drift past, then tiles drop in from above, top to bottom, on a blue background. On
+the right, **Fireworks**: tiles burst out of the middle with sparkle on a dark background. These GIFs are small previews; the app saves a
+smooth, full-resolution **MP4**. All Looks and the four animation styles are described [below](#design-your-video).
 
 <p align="center">
-  <img src="docs/images/anim-vermeer-swarm.gif" alt="Swarm style: tiles swoop in from all sides" width="40%">
+  <img src="docs/images/anim-vermeer-rain.gif" alt="Falling tiles look: tiles drop in from above on a blue background" width="40%">
   &nbsp;&nbsp;
-  <img src="docs/images/anim-vermeer-vortex.gif" alt="Vortex style: tiles spiral in while the camera circles" width="40%">
+  <img src="docs/images/anim-vermeer-fireworks.gif" alt="Fireworks look: tiles burst out from the centre" width="40%">
 </p>
 
 ---
