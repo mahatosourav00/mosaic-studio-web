@@ -48,7 +48,10 @@ let deferred;
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); deferred = e; $("#install").hidden = false; });
 $("#install").onclick = async () => { if (!deferred) return; deferred.prompt(); await deferred.userChoice; deferred = null; $("#install").hidden = true; };
 addEventListener("appinstalled", () => { $("#install").hidden = true; });
-if ("serviceWorker" in navigator && location.protocol !== "file:") {
+const isDev = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+if (isDev && "serviceWorker" in navigator) {   // local development: never serve stale cached files
+  navigator.serviceWorker.getRegistrations().then((rs) => { rs.forEach((r) => r.unregister()); if (rs.length) caches.keys().then((ks) => ks.forEach((k) => caches.delete(k))).then(() => location.reload()); });
+} else if ("serviceWorker" in navigator && location.protocol !== "file:") {
   navigator.serviceWorker.register("sw.js").then((reg) => {
     reg.addEventListener("updatefound", () => {
       const w = reg.installing;

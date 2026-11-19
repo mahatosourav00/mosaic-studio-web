@@ -25,7 +25,10 @@ export async function createPlayer(canvas, result, { forceGl = false } = {}) {
     const bg = s.bg_color.map((v) => v / 255);
     const opts = new Float64Array([STYLE_IDX[s.style] ?? 0, s.duration, W / H, s.hero_tiles, s.hero_size, s.flight_scale,
       s.pulses, s.pulse_depth, s.frame_margin, s.anim_seed, s.tint > 0 ? 1 : 0, s.dof, s.glow, s.particles, s.backdrop ? 1 : 0,
-      s.gap_px / Math.max(s.cell_px, 1), bg[0], bg[1], bg[2]]);
+      s.gap_px / Math.max(s.cell_px, 1), bg[0], bg[1], bg[2],
+      s.flight_speed, s.arrival_spread, s.camera_motion, s.spin, s.reveal_time,
+      s.entry, s.order, s.arc, s.ease, s.flash, s.hero_hold,
+      ...(s.cam_keys.length >= 7 ? [1, Math.floor(s.cam_keys.length / 7), ...s.cam_keys.slice(0, Math.floor(s.cam_keys.length / 7) * 7)] : [0, 0])]);
     const heroIds = r.set_scene(sc.cells, sc.cols, sc.rows, sc.tileRatio, sc.prep.patches, opts);
     await loadHeroes(r, sc, heroIds);
     // main picture overlay + blurred backdrop source (framed like the video)

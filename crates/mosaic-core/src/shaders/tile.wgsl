@@ -6,7 +6,7 @@ struct TU {
     fwd: vec4<f32>,
     bgc: vec4<f32>,
     a: vec4<f32>,   // time, gap, ratio, focus
-    b: vec4<f32>,   // dof, 0, 0, 0
+    b: vec4<f32>,   // dof, landing curve, landing flash, showcase dwell
 };
 @group(0) @binding(0) var<uniform> u: TU;
 @group(1) @binding(0) var tiles: texture_2d_array<f32>;
@@ -49,8 +49,14 @@ struct VOut {
     let is_hero = v.i_ext.z >= 0.5;
     o.hero = select(-1.0, v.i_ext.z - 1.0, is_hero);
     let p = clamp((time - v.i_time.x) / v.i_time.y, 0.0, 1.0);
-    let pp = p + 0.8 * sin(6.2831853 * p) / 6.2831853;           // dwell in the middle
-    let e = select(1.0 - pow(1.0 - p, 3.0), pp * pp * (3.0 - 2.0 * pp), is_hero);
+    let pp = p + u.b.w * sin(6.2831853 * p) / 6.2831853;         // showcase photos dwell in the middle
+    var en = 1.0 - pow(1.0 - p, 3.0);                            // 0: glide in and settle
+    let em = i32(u.b.y + 0.5);
+    if (em == 1) { en = p * p * (3.0 - 2.0 * p); }               // smooth: gentle start and end
+    else if (em == 2) { let q = p - 1.0; en = 1.0 + 3.2 * q * q * q + 2.2 * q * q; }   // overshoot and settle back
+    else if (em == 3) { en = 1.0 - pow(1.0 - p, 5.0); }          // snap: fast then sudden stop
+    else if (em == 4) { en = p; }                                // steady
+    let e = select(en, pp * pp * (3.0 - 2.0 * pp), is_hero);
     let E = vec3(v.i_end.xy, 0.0);
     let pos = (1.0 - e) * (1.0 - e) * v.i_start.xyz + 2.0 * (1.0 - e) * e * v.i_mid + e * e * E;
     let ang = v.i_start.w * (1.0 - e);
@@ -70,7 +76,7 @@ struct VOut {
     o.off = v.i_off;
     o.alpha = smoothstep(0.0, 0.2, p);
     let ts = time - (v.i_time.x + v.i_time.y);
-    o.light = 1.0 + select(0.0, 0.35 * exp(-ts * 6.0), ts > 0.0);
+    o.light = 1.0 + select(0.0, 0.35 * u.b.z * exp(-ts * 6.0), ts > 0.0);
     let depth = dot(wp - u.eye.xyz, u.fwd.xyz);
     let offd = abs(depth - focus) / focus;
     o.blur = select(clamp((offd - 0.10) * 2.0, 0.0, 1.0) * 2.6 * dof, 0.0, is_hero);

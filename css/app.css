@@ -163,3 +163,8 @@ canvas.stage { width: 100%; height: auto; max-height: 62vh; object-fit: contain;
 @media (min-width: 720px) { .top h1 { font-size: 21px; } main { padding-top: 14px; } .hero h2 { font-size: 34px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 .foot .linkish { background: none; border: 0; padding: 0; color: var(--accent2); font: inherit; cursor: pointer; text-decoration: underline; }
+
+.btn.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--s2)); }
+.mylook { display: flex; flex-direction: column; gap: 6px; }
+.mylook .btn { align-self: flex-start; }
+.sub-h { margin: 14px 0 6px; font-size: 14px; font-weight: 650; color: var(--muted); }

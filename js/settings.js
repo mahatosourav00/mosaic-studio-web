@@ -15,6 +15,48 @@ export const STYLES = {
   wave: ["Wave", "A sideways tracking shot follows a wave of tiles."],
   zoom: ["Zoom", "Starts macro-close, then pulls straight back to reveal the picture."],
 };
+/** Keys that make up a video "look" (everything creative about the animation). */
+export const LOOK_KEYS = ["style", "hero_tiles", "hero_size", "flight_scale", "flight_speed", "arrival_spread", "spin", "pulses", "pulse_depth",
+  "camera_motion", "frame_margin", "reveal_time", "entry", "order", "arc", "ease", "flash", "hero_hold", "cam_keys", "dof", "glow", "particles", "backdrop", "bg_color", "anim_seed"];
+export const ENTRY = { 0: "As designed by the style", 1: "All around", 2: "Above", 3: "Below", 4: "The sides", 5: "Centre burst", 6: "In front (toward the camera)" };
+export const ORDER = { 0: "As designed by the style", 1: "Random", 2: "Centre out", 3: "Edges in", 4: "Left to right", 5: "Top to bottom", 6: "Dark to bright", 7: "Bright to dark" };
+export const EASE = { 0: "Glide (soft landing)", 1: "Smooth", 2: "Bounce (overshoots, settles)", 3: "Snap (sudden stop)", 4: "Steady" };
+/** Ready-made looks. `v` only lists what differs from the defaults; `cam` names a camera move from camera-editor.js. */
+export const VIDEO_LOOKS = {
+  classic:   { icon: "✨", label: "Default",        text: "The balanced, all-round look we recommend to start.", v: {} },
+  calm:      { icon: "🌊", label: "Calm drift",     text: "Slow, floaty and gentle. Relaxing to watch.", cam: "sweep",
+               v: { style: "wave", flight_speed: 1.4, arrival_spread: 1.2, spin: 0.3, pulses: 2, pulse_depth: 0.3, camera_motion: 0.6, particles: 120, dof: 0.5, entry: 4, order: 2, ease: 1, flash: 0.5, arc: 1.4 } },
+  cinematic: { icon: "🎬", label: "Cinematic",      text: "Big showcase photos, deep blur and glow.", cam: "orbit",
+               v: { style: "swarm", hero_tiles: 18, hero_size: 0.46, flight_scale: 2.2, flight_speed: 1.2, spin: 0.8, camera_motion: 1.2, dof: 1, glow: 0.8, bg_color: [4, 4, 8], hero_hold: 0.9 } },
+  storm:     { icon: "🌪️", label: "Chaotic storm",  text: "Fast, wild and tumbling. Full of energy.",
+               v: { style: "vortex", flight_speed: 0.7, arrival_spread: 0.7, spin: 1.8, pulses: 7, pulse_depth: 0.9, flight_scale: 2.8, camera_motion: 1.6, particles: 400, entry: 1, order: 1, ease: 2, flash: 1.6, arc: 1.8 } },
+  snappy:    { icon: "⚡", label: "Snappy reveal",  text: "A short build, then a long look at the finished picture.",
+               v: { style: "zoom", flight_speed: 0.7, arrival_spread: 0.6, spin: 0.5, reveal_time: 0.64, pulses: 1, pulse_depth: 0.2, entry: 5, order: 2, ease: 3, arc: 0.5 } },
+  fireworks: { icon: "🎆", label: "Fireworks",      text: "Tiles burst out of the middle with sparkle and dust.", cam: "pull",
+               v: { style: "zoom", entry: 5, order: 2, ease: 2, flash: 1.8, particles: 500, pulses: 6, pulse_depth: 0.8, spin: 1.2, bg_color: [3, 3, 10], glow: 0.9 } },
+  rain:      { icon: "🌧️", label: "Falling tiles",  text: "Tiles drop in from above, top to bottom, like rain.", cam: "static",
+               v: { style: "wave", entry: 2, order: 5, ease: 0, spin: 0.2, arc: 0.3, flight_speed: 1.1, pulses: 0, camera_motion: 0.4 } },
+  bloom:     { icon: "🌸", label: "Bloom",          text: "The picture blooms outward from the centre.", cam: "pull",
+               v: { style: "zoom", entry: 1, order: 2, ease: 1, spin: 0.6, flash: 0.8, arc: 1.3, flight_speed: 1.2, pulses: 3, pulse_depth: 0.4 } },
+  gallery:   { icon: "🖼️", label: "Photo gallery",  text: "Shows off your best photos as they float by.", cam: "push",
+               v: { style: "swarm", hero_tiles: 26, hero_size: 0.5, hero_hold: 0.95, flight_speed: 1.3, spin: 0.4, camera_motion: 0.7, ease: 1, flash: 0.6, dof: 0.8 } },
+  spiral:    { icon: "🌀", label: "Spiral",         text: "Tiles spiral in while the camera circles.", cam: "orbit",
+               v: { style: "vortex", spin: 1.3, entry: 1, arc: 1.6, flight_speed: 1.1, pulses: 4, ease: 0 } },
+  swipe:     { icon: "👉", label: "Swipe",          text: "Tiles slide in from the sides, left to right.", cam: "sweep",
+               v: { style: "wave", entry: 4, order: 4, ease: 3, flight_speed: 0.8, spin: 0.4, arc: 0.6, pulses: 2 } },
+};
+
+/** The tile-motion settings (what the "Tile motion and build" group controls). */
+export const TILE_KEYS = ["flight_scale", "flight_speed", "arrival_spread", "spin", "pulses", "pulse_depth", "entry", "order", "arc", "ease", "flash", "hero_hold"];
+export const TILE_PRESETS = {
+  gentle: { label: "Gentle", v: { flight_speed: 1.3, spin: 0.3, arc: 1, ease: 1, flash: 0.5, entry: 0, order: 2, pulses: 2 } },
+  lively: { label: "Lively", v: { flight_speed: 0.85, spin: 1.2, arc: 1.2, ease: 2, flash: 1.3, entry: 1, order: 1, pulses: 5 } },
+  wild:   { label: "Wild",   v: { flight_speed: 0.7, spin: 1.8, arc: 1.8, ease: 2, flash: 1.8, entry: 6, order: 1, pulses: 7, pulse_depth: 0.9, flight_scale: 2.6 } },
+};
+/** [min, max, step] used by Surprise me. */
+export const RANGES = { hero_size: [0.26, 0.5, 0.02], flight_scale: [1.2, 2.8, 0.1], flight_speed: [0.7, 1.4, 0.05], arrival_spread: [0.7, 1.15, 0.05],
+  spin: [0, 1.8, 0.1], pulses: [0, 7, 1], pulse_depth: [0.2, 0.9, 0.05], camera_motion: [0.4, 1.6, 0.1], reveal_time: [0.66, 0.78, 0.02],
+  arc: [0.3, 1.8, 0.1], flash: [0.3, 1.8, 0.1], hero_hold: [0.5, 0.95, 0.05] };
 export const EXACT_SIZES = [["Full HD", 1920], ["4K", 3840], ["8K", 7680], ["12K", 12000], ["16K", 16000]];
 
 export function defaults() {
@@ -36,6 +78,8 @@ export function defaults() {
     style: "swarm", duration: 20, quality: "standard", video_res: phone ? 720 : 1080, fps: 30, video_aspect: "same",
     hero_tiles: 12, hero_size: 0.38, flight_scale: 1.7, pulses: 4, pulse_depth: 0.55, dof: 0.7, frame_margin: 0.8,
     backdrop: true, glow: 0.6, particles: phone ? 120 : 220, bg_color: [10, 10, 14], anim_seed: 7,
+    flight_speed: 1, arrival_spread: 1, camera_motion: 1, spin: 1, reveal_time: 0.78,
+    entry: 0, order: 0, arc: 1, ease: 0, flash: 1, hero_hold: 0.8, cam_keys: [],
   };
 }
 

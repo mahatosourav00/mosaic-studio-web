@@ -149,6 +149,7 @@ fn upload(device: &wgpu::Device, queue: &wgpu::Queue, label: &str, data: &[u8], 
 
 struct Opts {
     dur: f64, dof: f32, glow: f32, n_particles: usize, backdrop: bool, gap: f32, bg: [f32; 3],
+    ease: f32, flash: f32, hold: f32,   // landing curve, landing flash strength, showcase dwell
 }
 
 struct Scene {
@@ -344,13 +345,19 @@ impl Renderer {
 
     /// Plan the animation. `cells` = cell part of solve_mosaic output; `tile_rgb4` = T x 48 bytes.
     /// `o` = [style, duration, video_aspect, hero_tiles, hero_size, flight_scale, pulses, pulse_depth, frame_margin, seed,
-    ///        tint(0/1), dof, glow, particles, backdrop(0/1), gap_ratio, bg_r, bg_g, bg_b]  (bg in 0..1).
+    ///        tint(0/1), dof, glow, particles, backdrop(0/1), gap_ratio, bg_r, bg_g, bg_b]  (bg in 0..1),
+    ///        optionally followed by [flight_speed, arrival_spread, camera_motion, spin, reveal_time,
+    ///        entry, order, arc, ease, flash, hero_hold, cam_on(0/1), n_keys, then 7 numbers per camera keyframe] (missing = as designed).
     /// Returns the tile ids of the showcase photos, in showcase order (supply their hi-res pictures to `set_heroes`).
     pub fn set_scene(&mut self, cells: &[f32], cols: u32, rows: u32, tile_ratio: f32, tile_rgb4: &[u8], o: &[f64]) -> Result<Vec<u32>, JsError> {
         if o.len() < 19 { return Err(JsError::new("scene options need 19 numbers")); }
         let n_tiles = tile_rgb4.len() / 48;
+        let ex = |i: usize, d: f64| o.get(i).copied().filter(|v| v.is_finite()).unwrap_or(d);
         let vp = VideoParams { style: o[0] as u8, duration: o[1], aspect: o[2], tile_ratio: tile_ratio as f64, hero_tiles: o[3] as usize,
-            hero_size: o[4], flight_scale: o[5], pulses: o[6], pulse_depth: o[7], frame_margin: o[8], seed: o[9] as u64, tint: o[10] > 0.5 };
+            hero_size: o[4], flight_scale: o[5], pulses: o[6], pulse_depth: o[7], frame_margin: o[8], seed: o[9] as u64, tint: o[10] > 0.5,
+            flight_speed: ex(19, 1.0), arrival_spread: ex(20, 1.0), camera_motion: ex(21, 1.0), spin: ex(22, 1.0), reveal_time: ex(23, 0.78),
+            entry: ex(24, 0.0) as u8, order: ex(25, 0.0) as u8, arc: ex(26, 1.0),
+            cam_keys: if ex(30, 0.0) > 0.5 { let n = (ex(31, 0.0) as usize).min(40); o.get(32..32 + n * 7).map(|s| s.to_vec()).unwrap_or_default() } else { vec![] } };
         let m = MosaicIn { cols: cols as usize, rows: rows as usize, ratio: tile_ratio as f64, cells, tile_rgb4, n_tiles };
         let plan = animation::make_plan(&m, &vp);
         let n = plan.n;
@@ -389,7 +396,8 @@ impl Renderer {
         }
         self.scene = Some(Scene { plan, world_w, rows: rows as f32, tile_ratio, inst, ranges,
             opts: Opts { dur: o[1], dof: o[11] as f32, glow: o[12] as f32, n_particles: n_p, backdrop: o[14] > 0.5, gap: o[15] as f32,
-                         bg: [o[16] as f32, o[17] as f32, o[18] as f32] } });
+                         bg: [o[16] as f32, o[17] as f32, o[18] as f32],
+                         ease: ex(27, 0.0) as f32, flash: ex(28, 1.0) as f32, hold: ex(29, 0.8).clamp(0.0, 0.95) as f32 } });
         Ok(heroes.into_iter().map(|h| h.1).collect())
     }
 
@@ -465,7 +473,7 @@ impl Renderer {
         // tiles
         let mut u = vp.to_vec();
         u.extend_from_slice(&f4(eye, 0.0)); u.extend_from_slice(&f4(fwd, 0.0)); u.extend_from_slice(&[bg[0], bg[1], bg[2], 1.0]);
-        u.extend_from_slice(&[t as f32, sc.opts.gap, sc.tile_ratio, focus]); u.extend_from_slice(&[sc.opts.dof, 0.0, 0.0, 0.0]);
+        u.extend_from_slice(&[t as f32, sc.opts.gap, sc.tile_ratio, focus]); u.extend_from_slice(&[sc.opts.dof, sc.opts.ease, sc.opts.flash, sc.opts.hold]);
         w(&self.u_tile, &u);
         // overlay + shine
         let ramp = smooth(sc.plan.ramp.0, sc.plan.ramp.1, t) as f32;

@@ -96,6 +96,7 @@ pub struct Cam {
     fov_boost: f64,
     world_w: f64,
     const_fov: bool,
+    motion: f64,
 }
 
 impl Cam {
@@ -109,13 +110,13 @@ impl Cam {
         let [mut x, mut y, mut dist, mut yaw, pitch, mut roll] = v;
         let ph = &self.ph;
         if self.orbit {
-            let k = 1.0 - smooth(0.66 * d, 0.86 * d, tt);
+            let k = self.motion * (1.0 - smooth(0.66 * d, 0.86 * d, tt));
             x += k * (0.30 * (TAU * tt / 7.3 + ph[0]).sin() + 0.15 * (TAU * tt / 3.1 + ph[1]).sin());
             y += k * (0.30 * (TAU * tt / 6.1 + ph[2]).sin() + 0.15 * (TAU * tt / 2.7 + ph[3]).sin());
             roll += k * 0.006 * (TAU * tt / 5.3 + ph[4]).sin();
             yaw += k * 0.015 * (TAU * tt / 8.9 + ph[5]).sin();
         } else {
-            let k = self.drift * (1.0 - smooth(0.55 * d, 0.84 * d, tt));
+            let k = self.motion * self.drift * (1.0 - smooth(0.55 * d, 0.84 * d, tt));
             x += k * (0.30 * (TAU * tt / 6.3 + ph[0]).sin() + 0.15 * (TAU * tt / 2.9 + ph[1]).sin());
             y += k * (0.30 * (TAU * tt / 5.7 + ph[2]).sin() + 0.15 * (TAU * tt / 2.5 + ph[3]).sin());
             roll += k * 0.006 * (TAU * tt / 5.3 + ph[4]).sin();
@@ -161,7 +162,7 @@ fn orbit_camera(world_w: f64, rows: f64, cen: [f64; 2], d_full: f64, dur: f64, s
     ];
     let mut ph = [0.0; 6];
     for p in ph.iter_mut() { *p = rng.uniform(0.0, 6.28); }
-    Cam { orbit: true, spl: splines(&kt, &rows_k), kt, ph, d: dur, drift: 1.0, arc: 0.0, fov_boost: 0.0, world_w, const_fov: true }
+    Cam { orbit: true, spl: splines(&kt, &rows_k), kt, ph, d: dur, drift: 1.0, arc: 0.0, fov_boost: 0.0, world_w, const_fov: true, motion: 1.0 }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -174,7 +175,7 @@ fn path_camera(world_w: f64, rows: f64, dur: f64, seed: u64, kt: &[f64], tx: Vec
     let kt: Vec<f64> = kt.iter().map(|k| k * dur).collect();
     let rows_k = vec![tx.iter().map(|v| v.clamp(-lim_x, lim_x)).collect(), ty.iter().map(|v| v.clamp(-lim_y, lim_y)).collect(),
                       dist, yaw, pitch, roll];
-    Cam { orbit: false, spl: splines(&kt, &rows_k), kt, ph, d: dur, drift, arc, fov_boost, world_w, const_fov: false }
+    Cam { orbit: false, spl: splines(&kt, &rows_k), kt, ph, d: dur, drift, arc, fov_boost, world_w, const_fov: false, motion: 1.0 }
 }
 
 // ------------------------------------------------------------------ inputs / outputs
@@ -191,6 +192,17 @@ pub struct VideoParams {
     pub frame_margin: f64,
     pub seed: u64,
     pub tint: bool,
+    pub flight_speed: f64,   // 1.0 = as designed; scales how long each tile flies
+    pub arrival_spread: f64, // 1.0 = as designed; scales how long tiles keep arriving
+    pub camera_motion: f64,  // 1.0 = as designed; scales camera drift and wobble
+    pub spin: f64,           // 1.0 = as designed; scales tile spin and tilt
+    pub reveal_time: f64,    // fraction of the video when the final picture starts to appear (0.78 = as designed)
+    pub entry: u8,           // where tiles fly in from: 0 as designed by the style, 1 all around, 2 top, 3 bottom, 4 sides, 5 centre burst, 6 front
+    pub order: u8,           // build order: 0 as designed, 1 random, 2 centre-out, 3 edges-in, 4 left to right, 5 top to bottom, 6 dark to bright, 7 bright to dark
+    pub arc: f64,            // 1.0 = as designed; 0 = straight flights, higher = bigger curves
+    /// Custom camera: 7 numbers per keyframe [time 0..1, distance (1 = whole mosaic), pan x, pan y (fractions of the mosaic),
+    /// turn, tilt, roll (degrees)]. Empty = the style's own camera. The camera always finishes on the full picture.
+    pub cam_keys: Vec<f64>,
 }
 
 pub struct MosaicIn<'a> {
@@ -344,14 +356,14 @@ fn build_plan(m: &MosaicIn, p: &VideoParams, w: &World, a: &Arrays, cam: Cam, d_
     for i in 0..n {
         let r = &mut inst[i * N_COLS..(i + 1) * N_COLS];
         r[0] = w.x[i] as f32; r[1] = w.y[i] as f32; r[2] = w.size[i] as f32; r[3] = w.tile[i] as f32;
-        r[4] = a.s[i][0] as f32; r[5] = a.s[i][1] as f32; r[6] = a.s[i][2] as f32; r[7] = a.spin[i] as f32;
-        r[8] = a.t0[i] as f32; r[9] = a.dur[i] as f32; r[10] = w.flip[i]; r[11] = a.tilt[i] as f32;
+        r[4] = a.s[i][0] as f32; r[5] = a.s[i][1] as f32; r[6] = a.s[i][2] as f32; r[7] = (a.spin[i] * p.spin) as f32;
+        r[8] = a.t0[i] as f32; r[9] = a.dur[i] as f32; r[10] = w.flip[i]; r[11] = (a.tilt[i] * p.spin) as f32;
         r[12..15].copy_from_slice(&off[i]);
         r[15] = a.kmul[i] as f32; r[16] = a.shrink[i] as f32; r[17] = a.ease[i] as f32;
         r[18] = a.c[i][0] as f32; r[19] = a.c[i][1] as f32; r[20] = a.c[i][2] as f32;
     }
     let d = p.duration;
-    Plan { inst, cam, d_full, ramp: (0.78 * d, 0.92 * d), shine: (0.84 * d, 0.97 * d), n }
+    Plan { inst, cam, d_full, ramp: (p.reveal_time * d, (p.reveal_time + 0.14) * d), shine: ((p.reveal_time + 0.06) * d, (p.reveal_time + 0.19) * d), n }
 }
 
 fn new_arrays(w: &World) -> Arrays {
@@ -366,15 +378,15 @@ fn d_full_for(m: &MosaicIn, p: &VideoParams) -> f64 {
 }
 
 // ------------------------------------------------------------------ styles
-fn swarm(m: &MosaicIn, p: &VideoParams) -> Plan {
+fn swarm(m: &MosaicIn, p: &VideoParams, ov: Option<Cam>) -> Plan {
     let w = world(m);
     let n = w.x.len();
     let mut rng = Rng::new(p.seed);
     let dur = p.duration;
     let d_full = d_full_for(m, p);
     let cen = subject_centroid(&w);
-    let cam = orbit_camera(m.world_w(), m.rows as f64, cen, d_full, dur, p.seed);
-    let (t_a, t_b) = (0.03 * dur, 0.60 * dur);
+    let cam = ov.unwrap_or_else(|| orbit_camera(m.world_w(), m.rows as f64, cen, d_full, dur, p.seed));
+    let (t_a, t_b) = spread_window(p, 0.03, 0.60);
     let ts: Vec<f64> = (0..80).map(|i| t_a + (t_b - t_a) * i as f64 / 79.0).collect();
     let st: Vec<[f64; 6]> = ts.iter().map(|&t| cam.state(t)).collect();
     let tn = tan_half(FOV_DEG);
@@ -387,7 +399,7 @@ fn swarm(m: &MosaicIn, p: &VideoParams) -> Plan {
         }
         key[i] = ts[best.1] + rng.normal(0.0, 0.06 * dur) + if w.size[i] < 1.0 { 0.04 * dur } else { 0.0 };
     }
-    let flight = 0.17 * dur;
+    let flight = 0.17 * dur * p.flight_speed;
     let mut a = new_arrays(&w);
     a.t0 = arrival_times(&key, t_a, t_b, p.pulses, p.pulse_depth, -PI / 2.0);
     for i in 0..n {
@@ -417,9 +429,9 @@ fn simple_plan(m: &MosaicIn, p: &VideoParams, w: &World, mut a: Arrays, key: &[f
     let mut rng = Rng::new(p.seed + 7);
     let n = w.x.len();
     let dur = p.duration;
-    let (t_a, t_b) = (sp.window.0 * dur, sp.window.1 * dur);
+    let (t_a, t_b) = spread_window(p, sp.window.0, sp.window.1);
     a.t0 = arrival_times(key, t_a, t_b, p.pulses, p.pulse_depth, sp.pulse_phase);
-    for i in 0..n { a.dur[i] = sp.flight_frac * dur * rng.uniform(0.85, 1.15); }
+    for i in 0..n { a.dur[i] = sp.flight_frac * p.flight_speed * dur * rng.uniform(0.85, 1.15); }
     if let Some((frac, secs, scale)) = sp.opening {
         let n_o = (frac * n as f64) as usize;
         let mut idx: Vec<usize> = (0..n).collect();
@@ -443,12 +455,12 @@ fn simple_plan(m: &MosaicIn, p: &VideoParams, w: &World, mut a: Arrays, key: &[f
     }
     let cam2 = cam.clone();
     let tan_fn = move |t: f64| tan_half(cam2.fov(t));
-    place_heroes(p, &mut rng, &cam, &tan_fn, m.n_tiles, sp.flight_frac * dur, w, &mut a,
+    place_heroes(p, &mut rng, &cam, &tan_fn, m.n_tiles, sp.flight_frac * p.flight_speed * dur, w, &mut a,
                  &HeroKw { edge_bias: true, size_scale: 0.85, min_gap: 0.04 * dur, q_hi: 0.62 });
     build_plan(m, p, w, &a, cam, d_full)
 }
 
-fn vortex(m: &MosaicIn, p: &VideoParams) -> Plan {
+fn vortex(m: &MosaicIn, p: &VideoParams, ov: Option<Cam>) -> Plan {
     let w = world(m);
     let n = w.x.len();
     let mut rng = Rng::new(p.seed);
@@ -478,10 +490,10 @@ fn vortex(m: &MosaicIn, p: &VideoParams) -> Plan {
     let wb = [0.0, 0.0, 0.0, 0.05, 0.20, 0.55, 0.90, 1.0, 1.0];
     let tx: Vec<f64> = (0..9).map(|i| (1.0 - wb[i]) * (cen[0] + rad[i] * ang[i].cos())).collect();
     let ty: Vec<f64> = (0..9).map(|i| (1.0 - wb[i]) * (cen[1] + rad[i] * ang[i].sin())).collect();
-    let cam = path_camera(ww, rows, dur, p.seed, &kt, tx, ty,
+    let cam = ov.unwrap_or_else(|| path_camera(ww, rows, dur, p.seed, &kt, tx, ty,
         [0.26, 0.30, 0.32, 0.34, 0.36, 0.50, 0.88, 1.0, 0.985].iter().map(|k| k * d_full).collect(),
         vec![1.00, 0.75, 0.40, 0.0, -0.40, -0.50, -0.15, -0.02, 0.0], vec![-0.22, -0.05, 0.20, 0.12, -0.12, -0.05, 0.04, 0.0, 0.0],
-        vec![0.20, 0.16, 0.12, 0.06, 0.0, -0.04, 0.02, 0.0, 0.0], 9.0, 1.0, 1.0);
+        vec![0.20, 0.16, 0.12, 0.06, 0.0, -0.04, 0.02, 0.0, 0.0], 9.0, 1.0, 1.0));
     let (t_a, t_b) = (0.0, 0.62 * dur);
     let ts: Vec<f64> = (0..80).map(|i| t_a + (t_b - t_a) * i as f64 / 79.0).collect();
     let st: Vec<[f64; 6]> = ts.iter().map(|&t| cam.state(t)).collect();
@@ -499,7 +511,7 @@ fn vortex(m: &MosaicIn, p: &VideoParams) -> Plan {
         window: (0.0, 0.62), pulse_phase: 0.4, opening: Some((0.08, 1.2, 0.35)) })
 }
 
-fn wave(m: &MosaicIn, p: &VideoParams) -> Plan {
+fn wave(m: &MosaicIn, p: &VideoParams, ov: Option<Cam>) -> Plan {
     let w = world(m);
     let n = w.x.len();
     let mut rng = Rng::new(p.seed);
@@ -521,16 +533,16 @@ fn wave(m: &MosaicIn, p: &VideoParams) -> Plan {
     let kt = [0.0, 0.12, 0.24, 0.36, 0.48, 0.58, 0.70, 0.82, 0.90];
     let wb = [0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.70, 1.0, 1.0];
     let tx: Vec<f64> = (0..9).map(|i| { let f = ((kt[i] - 0.02) / 0.58f64).clamp(0.0, 1.0); (-0.5 + f) * cols * 0.9 * (1.0 - wb[i]) }).collect();
-    let cam = path_camera(cols, rows, dur, p.seed, &kt, tx,
+    let cam = ov.unwrap_or_else(|| path_camera(cols, rows, dur, p.seed, &kt, tx,
         [-0.04, -0.04, -0.03, -0.02, -0.01, 0.0, 0.0, 0.0, 0.0].iter().map(|k| k * rows).collect(),
         [0.42, 0.42, 0.42, 0.42, 0.44, 0.62, 0.92, 1.0, 0.985].iter().map(|k| k * d_full).collect(),
         vec![0.30, 0.30, 0.30, 0.30, 0.26, 0.12, 0.03, 0.0, 0.0], vec![-0.12, -0.12, -0.12, -0.10, -0.08, -0.03, 0.0, 0.0, 0.0],
-        vec![0.0; 9], 3.0, 0.25, 0.4);
+        vec![0.0; 9], 3.0, 0.25, 0.4));
     simple_plan(m, p, &w, a, &key, cam, d_full, Simple { spin_amp: 2.2, tilt_amp: 1.6, kmul_rng: (0.55, 0.95), flight_frac: 0.16,
         window: (0.02, 0.60), pulse_phase: -PI / 2.0, opening: Some((0.12, 1.2, 0.12)) })
 }
 
-fn zoom(m: &MosaicIn, p: &VideoParams) -> Plan {
+fn zoom(m: &MosaicIn, p: &VideoParams, ov: Option<Cam>) -> Plan {
     let w = world(m);
     let n = w.x.len();
     let mut rng = Rng::new(p.seed);
@@ -547,16 +559,110 @@ fn zoom(m: &MosaicIn, p: &VideoParams) -> Plan {
         a.c[i] = add(mul(add(a.s[i], a.e[i]), 0.5), [rng.normal(0.0, 0.06) * ww, rng.normal(0.0, 0.06) * rows, d_full * rng.uniform(0.0, 0.15)]);
     }
     let wb = [0.0, 0.0, 0.0, 0.10, 0.30, 0.60, 0.90, 1.0, 1.0];
-    let cam = path_camera(ww, rows, dur, p.seed, &[0.0, 0.10, 0.22, 0.34, 0.44, 0.54, 0.64, 0.76, 0.90],
+    let cam = ov.unwrap_or_else(|| path_camera(ww, rows, dur, p.seed, &[0.0, 0.10, 0.22, 0.34, 0.44, 0.54, 0.64, 0.76, 0.90],
         wb.iter().map(|b| (1.0 - b) * cen[0]).collect(), wb.iter().map(|b| (1.0 - b) * cen[1]).collect(),
         [0.17, 0.19, 0.23, 0.30, 0.46, 0.72, 0.94, 1.0, 0.985].iter().map(|k| k * d_full).collect(),
-        vec![0.0; 9], vec![0.0; 9], vec![0.0; 9], -9.0, 0.0, 0.0);
+        vec![0.0; 9], vec![0.0; 9], vec![0.0; 9], -9.0, 0.0, 0.0));
     simple_plan(m, p, &w, a, &key, cam, d_full, Simple { spin_amp: 1.4, tilt_amp: 1.0, kmul_rng: (0.6, 1.0), flight_frac: 0.14,
         window: (0.0, 0.62), pulse_phase: 0.4, opening: Some((0.10, 1.2, 0.35)) })
 }
 
+/// Arrival window in seconds: the designed window (fractions of the video) stretched or squeezed, never past 0.75 of the video.
+fn spread_window(p: &VideoParams, a: f64, b: f64) -> (f64, f64) {
+    let t_a = a * p.duration;
+    (t_a, (t_a + (b - a) * p.duration * p.arrival_spread).min(0.75 * p.duration).max(t_a + 0.05 * p.duration))
+}
+
+/// The user's own camera path, built from their keyframes. Always lands on the full picture at the end.
+fn user_camera(m: &MosaicIn, p: &VideoParams) -> Option<Cam> {
+    let mut k: Vec<[f64; 7]> = p.cam_keys.chunks_exact(7).filter(|c| c.iter().all(|v| v.is_finite()))
+        .map(|c| [c[0].clamp(0.0, 0.85), c[1].clamp(0.1, 3.0), c[2].clamp(-0.5, 0.5), c[3].clamp(-0.5, 0.5), c[4].clamp(-180.0, 180.0), c[5].clamp(-80.0, 80.0), c[6].clamp(-45.0, 45.0)]).collect();
+    if k.is_empty() { return None; }
+    k.sort_by(|a, b| a[0].partial_cmp(&b[0]).unwrap_or(std::cmp::Ordering::Equal));
+    k[0][0] = 0.0;
+    let mut kept: Vec<[f64; 7]> = vec![k[0]];
+    for c in &k[1..] { if c[0] >= kept.last().unwrap()[0] + 0.03 && c[0] <= 0.85 { kept.push(*c); } }
+    let (ww, rows, d_full) = (m.world_w(), m.rows as f64, d_full_for(m, p));
+    let mut kt: Vec<f64> = kept.iter().map(|c| c[0]).collect();
+    let mut tx: Vec<f64> = kept.iter().map(|c| c[2] * ww).collect();
+    let mut ty: Vec<f64> = kept.iter().map(|c| c[3] * rows).collect();
+    let mut dist: Vec<f64> = kept.iter().map(|c| c[1] * d_full).collect();
+    let mut yaw: Vec<f64> = kept.iter().map(|c| c[4].to_radians()).collect();
+    let mut pitch: Vec<f64> = kept.iter().map(|c| c[5].to_radians()).collect();
+    let mut roll: Vec<f64> = kept.iter().map(|c| c[6].to_radians()).collect();
+    for (t, d) in [(0.92, 1.0), (1.0, 0.985)] {
+        kt.push(t); tx.push(0.0); ty.push(0.0); dist.push(d * d_full); yaw.push(0.0); pitch.push(0.0); roll.push(0.0);
+    }
+    Some(path_camera(ww, rows, p.duration, p.seed, &kt, tx, ty, dist, yaw, pitch, roll, 0.0, 1.0, 0.25))
+}
+
 pub fn make_plan(m: &MosaicIn, p: &VideoParams) -> Plan {
-    match p.style { 1 => vortex(m, p), 2 => wave(m, p), 3 => zoom(m, p), _ => swarm(m, p) }
+    let ov = user_camera(m, p);
+    let mut plan = match p.style { 1 => vortex(m, p, ov), 2 => wave(m, p, ov), 3 => zoom(m, p, ov), _ => swarm(m, p, ov) };
+    plan.cam.motion = p.camera_motion;
+    restyle(&mut plan, m, p);
+    plan
+}
+
+/// User-chosen entry direction, build order and flight curve, applied on top of the style's own design.
+/// Showcase tiles are left alone (their flight is tied to the camera). With the defaults this changes nothing.
+fn restyle(plan: &mut Plan, m: &MosaicIn, p: &VideoParams) {
+    if p.entry == 0 && p.order == 0 && (p.arc - 1.0).abs() < 1e-9 { return; }
+    let (ww, rows, df) = (m.world_w(), m.rows as f64, plan.d_full);
+    let mut rng = Rng::new(p.seed + 31);
+    let n = plan.n;
+    let hero = |inst: &[f32], i: usize| inst[i * N_COLS + 17] >= 1.0;
+    // entry direction and flight curve
+    for i in 0..n {
+        if hero(&plan.inst, i) { continue; }
+        let r = &mut plan.inst[i * N_COLS..(i + 1) * N_COLS];
+        let e = [r[0] as f64, r[1] as f64, 0.0];
+        let mut s = [r[4] as f64, r[5] as f64, r[6] as f64];
+        let mut c = [r[18] as f64, r[19] as f64, r[20] as f64];
+        if p.entry != 0 {
+            s = match p.entry {
+                1 => { let mut d = [rng.normal(0.0, 1.0), rng.normal(0.0, 1.0), rng.normal(0.0, 1.0)]; d[2] = d[2].abs() * 0.8 + 0.15; add(e, mul(unit(d), df * rng.uniform(0.30, 0.9))) }
+                2 => [e[0] + rng.normal(0.0, 0.08) * ww, e[1] + rng.uniform(0.6, 1.0) * rows, df * rng.uniform(0.05, 0.4)],
+                3 => [e[0] + rng.normal(0.0, 0.08) * ww, e[1] - rng.uniform(0.6, 1.0) * rows, df * rng.uniform(0.05, 0.4)],
+                4 => [e[0] + rng.sign() * rng.uniform(0.6, 1.0) * ww, e[1] + rng.normal(0.0, 0.08) * rows, df * rng.uniform(0.05, 0.4)],
+                5 => [rng.normal(0.0, 0.03) * ww, rng.normal(0.0, 0.03) * rows, df * rng.uniform(0.2, 0.5)],
+                _ => [e[0] + rng.normal(0.0, 0.1) * ww, e[1] + rng.normal(0.0, 0.1) * rows, df * rng.uniform(0.8, 1.3)],
+            };
+            let off = unit([rng.normal(0.0, 1.0), rng.normal(0.0, 1.0), rng.normal(0.0, 1.0)]);
+            let l = norm(sub(s, e)) * rng.uniform(0.08, 0.30);
+            c = add(mul(add(s, e), 0.5), mul(off, 2.0 * l));
+        }
+        let mid = mul(add(s, e), 0.5);
+        c = add(mid, mul(sub(c, mid), p.arc));
+        for k in 0..3 { r[4 + k] = s[k] as f32; r[18 + k] = c[k] as f32; }
+    }
+    // build order: hand the same arrival times to the tiles in a different sequence
+    if p.order != 0 {
+        let idx: Vec<usize> = (0..n).filter(|&i| !hero(&plan.inst, i)).collect();
+        let mut slots: Vec<f32> = idx.iter().map(|&i| plan.inst[i * N_COLS + 8]).collect();
+        slots.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let luma = |t: usize| -> f64 {
+            if m.n_tiles == 0 { return 0.0; }
+            let t = t.min(m.n_tiles - 1);
+            m.tile_rgb4[t * 48..(t + 1) * 48].chunks_exact(3).map(|q| 0.299 * q[0] as f64 + 0.587 * q[1] as f64 + 0.114 * q[2] as f64).sum::<f64>() / 16.0
+        };
+        let mut keyed: Vec<(f64, usize)> = idx.iter().map(|&i| {
+            let r = &plan.inst[i * N_COLS..(i + 1) * N_COLS];
+            let (x, y) = (r[0] as f64, r[1] as f64);
+            let k = match p.order {
+                1 => rng.uniform(0.0, 1.0),
+                2 => (x / ww.max(1e-6)).hypot(y / rows.max(1e-6)),
+                3 => -(x / ww.max(1e-6)).hypot(y / rows.max(1e-6)),
+                4 => x,
+                5 => -y,
+                6 => luma(r[3] as usize),
+                _ => -luma(r[3] as usize),
+            };
+            (k + rng.uniform(0.0, 1e-4), i)
+        }).collect();
+        keyed.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+        for (slot, &(_, i)) in slots.iter().zip(&keyed) { plan.inst[i * N_COLS + 8] = *slot; }
+    }
 }
 
 #[cfg(test)]
@@ -573,7 +679,50 @@ mod tests {
 
     fn params(style: u8) -> VideoParams {
         VideoParams { style, duration: 12.0, aspect: 9.0 / 16.0, tile_ratio: 1.0, hero_tiles: 6, hero_size: 0.38,
-            flight_scale: 1.7, pulses: 4.0, pulse_depth: 0.55, frame_margin: 0.8, seed: 7, tint: true }
+            flight_scale: 1.7, pulses: 4.0, pulse_depth: 0.55, frame_margin: 0.8, seed: 7, tint: true,
+            flight_speed: 1.0, arrival_spread: 1.0, camera_motion: 1.0, spin: 1.0, reveal_time: 0.78, entry: 0, order: 0, arc: 1.0, cam_keys: vec![] }
+    }
+
+    #[test]
+    fn custom_camera_makes_valid_plans() {
+        let (cells, rgb4) = fixture(20, 28, 90);
+        let m = MosaicIn { cols: 20, rows: 28, ratio: 1.0, cells: &cells, tile_rgb4: &rgb4, n_tiles: 90 };
+        let sets: [Vec<f64>; 4] = [
+            vec![0.0, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0],
+            vec![0.0, 1.8, 0.0, 0.0, 40.0, 30.0, 5.0, 0.4, 0.6, 0.2, -0.1, -30.0, 10.0, -5.0],
+            vec![0.5, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.9, 1.0, 9.0, 9.0, 999.0, 99.0, 99.0],
+            vec![f64::NAN; 7],
+        ];
+        for style in 0..4 {
+            for keys in &sets {
+                let mut p = params(style);
+                p.cam_keys = keys.clone();
+                let pl = make_plan(&m, &p);
+                assert!(pl.inst.iter().all(|v| v.is_finite()), "style {style}");
+                let (eye, tg, _) = pl.cam.camera(12.0);
+                assert!((norm(sub(eye, tg)) - pl.d_full).abs() < pl.d_full * 0.1, "camera ends on the full frame");
+            }
+        }
+    }
+
+    #[test]
+    fn entry_order_and_arc_choices_make_valid_plans() {
+        let (cells, rgb4) = fixture(20, 28, 90);
+        let m = MosaicIn { cols: 20, rows: 28, ratio: 1.0, cells: &cells, tile_rgb4: &rgb4, n_tiles: 90 };
+        for style in 0..4 {
+            let base = make_plan(&m, &params(style));
+            for entry in 0..7u8 { for order in 0..8u8 { for arc in [0.0, 1.0, 2.0] {
+                let mut p = params(style);
+                p.entry = entry; p.order = order; p.arc = arc;
+                let pl = make_plan(&m, &p);
+                assert!(pl.inst.iter().all(|v| v.is_finite()), "style {style} entry {entry} order {order} arc {arc}");
+                // showcase tiles and the overall set of arrival times are untouched by the order
+                let mut a: Vec<f32> = base.inst.chunks_exact(N_COLS).map(|r| r[8]).collect();
+                let mut b: Vec<f32> = pl.inst.chunks_exact(N_COLS).map(|r| r[8]).collect();
+                a.sort_by(|x, y| x.partial_cmp(y).unwrap()); b.sort_by(|x, y| x.partial_cmp(y).unwrap());
+                assert_eq!(a, b);
+            } } }
+        }
     }
 
     #[test]
