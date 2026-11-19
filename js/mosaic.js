@@ -130,8 +130,9 @@ async function solveAndRender(core, j, onStage, signal) {
 export async function buildMosaic({ photos, main, settings, onStage, signal, preview = false }) {
   const core = await loadCore();
   const s = preview ? { ...settings, output_mode: "screen", cell_px: 24 } : settings;
-  onStage?.("Reading your photos", 0);
-  const prep = await getPrepared(photos, s, { onProgress: (f) => onStage?.("Reading your photos", f), signal });
+  onStage?.(`Reading your photos (0/${photos.length})`, 0);
+  const total = photos.length;
+  const prep = await getPrepared(photos, s, { onProgress: (f) => onStage?.(`Reading your photos (${Math.round(f * total)}/${total})`, f), signal });
   if (prep.count < 4) throw new Error(`Only ${prep.count} usable photos were found (${prep.skipped} left out). Pick at least 4, or loosen the photo preparation options.`);
   await tick();
   onStage?.("Reading the main picture", 0);
