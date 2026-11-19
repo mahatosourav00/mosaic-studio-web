@@ -38,10 +38,16 @@ export function prepFlags(s) {
   return { trim: s.trim_borders, dedupe: s.dedupe, filter: s.filter_photos, crop: s.smart_crop };
 }
 
-/** Key that changes whenever the prepared tiles would change. */
+// Each File object gets a number the first time it is seen. Reading a File's size or lastModified can cost a slow round trip
+// to Android's file provider (about 50 ms each, 20+ seconds for 500 photos), so the cache key uses the object itself instead.
+const fileIds = new WeakMap();
+let nextFileId = 1;
+const fileId = (x) => { let id = fileIds.get(x); if (!id) fileIds.set(x, id = nextFileId++); return id; };
+
+/** Key that changes whenever the prepared tiles would change (re-picking photos gives new File objects, so a new key). */
 export function prepKey(files, s) {
   const f = prepFlags(s);
-  return JSON.stringify([files.map((x) => [x.name, x.size, x.lastModified]), f, s.min_sharpness, s.min_side, s.tile_aspect, s.grayscale, s.detect_faces]);
+  return JSON.stringify([files.map((x) => fileId(x)), f, s.min_sharpness, s.min_side, s.tile_aspect, s.grayscale, s.detect_faces]);
 }
 
 const hamming = (a, b) => { const c = (v) => { v -= (v >>> 1) & 0x55555555; v = (v & 0x33333333) + ((v >>> 2) & 0x33333333); return (((v + (v >>> 4)) & 0x0f0f0f0f) * 0x01010101) >>> 24; }; return c((a[0] ^ b[0]) >>> 0) + c((a[1] ^ b[1]) >>> 0); };
@@ -108,6 +114,7 @@ export async function preparePhotos(files, s, { onProgress, signal, thumbs = fal
   const flags = prepFlags(s);
   const ratio = tileRatio(s), tw = Math.round(TILE_H * ratio), th = TILE_H;
   const cfg = { flags, ratio, tw, th, minSide: s.min_side, minSharp: s.min_sharpness, grayscale: s.grayscale, faces: s.detect_faces, thumbs, small: smallDecode(), split: DEBUG && param("split") !== null };
+  mark("settings ready");
   const t0 = performance.now();
   const results = await processAll(core, files, cfg, { onProgress, signal });
   if (DEBUG) debugReport(files, results, performance.now() - t0);

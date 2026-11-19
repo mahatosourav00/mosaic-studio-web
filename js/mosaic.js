@@ -25,6 +25,7 @@ let prepCache = null;
 /** Prepare (or reuse) the tiles for these photos and settings. */
 export async function getPrepared(files, s, opts = {}) {
   const key = prepKey(files, s);
+  mark("cache key ready");
   if (prepCache && prepCache.key === key && (!opts.thumbs || prepCache.thumbs)) return prepCache.data;
   const data = await preparePhotos(files, s, opts);
   prepCache = { key, data, thumbs: !!opts.thumbs };
